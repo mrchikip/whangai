@@ -8,18 +8,17 @@
             <?php if (isset($_SESSION['message'])) { ?>
             <div class="alert alert-<?= $_SESSION['message_type'] ?> alert-dismissible fade show" role="alert">
                 <?= $_SESSION['message'] ?>
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
                 </button>
             </div>
             <?php session_unset(); } ?>
 
             <div class="card card-body">
                 <form action="save_task.php" method="POST">
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <input type="text" name="tittle" class="form-control" placeholder="Task Tittle" autofocus>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <textarea name="Description" rows="2" class="form-control"
                             placeholder="Task Description"></textarea>
                     </div>
