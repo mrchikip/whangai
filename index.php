@@ -11,7 +11,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
                 </button>
             </div>
-            <?php session_unset(); } ?>
+            <?php session_unset();
+            } ?>
 
             <div class="card card-body">
                 <form action="save_task.php" method="POST">
@@ -19,7 +20,7 @@
                         <input type="text" name="tittle" class="form-control" placeholder="Task Tittle" autofocus>
                     </div>
                     <div class="form-group mb-3">
-                        <textarea name="Description" rows="2" class="form-control"
+                        <textarea name="description" rows="2" class="form-control"
                             placeholder="Task Description"></textarea>
                     </div>
                     <input type="submit" class="btn btn-success btn-block" name="save_task" value="Save Task">
@@ -40,6 +41,9 @@
                     <?php
                     $query = "SELECT * FROM tasks";
                     $result_tasks = mysqli_query($conn, $query);
+                    if (!$result_tasks) {
+                        die("Query Failed: " . mysqli_error($conn));
+                    }
                     while ($row = mysqli_fetch_array($result_tasks)) { ?>
                     <tr>
                         <td><?php echo $row['tittle'] ?></td>
