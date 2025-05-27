@@ -81,11 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Procesar el archivo CSV
                     try {
                         // Usar la conexión existente de db.php
-                        if (!$conn) {
+                        if (!$conn2) {
                             throw new Exception('Error de conexión a la base de datos');
                         }
 
-                        mysqli_set_charset($conn, 'utf8');
+                        mysqli_set_charset($conn2, 'utf8');
 
                         // Preparar la consulta de inserción
                         $insertQuery = "INSERT INTO sales (
@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ProductVBN, CarrierCode, SalespersonCode, Cubes, Aging, svfactores
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-                        $stmt = $conn->prepare($insertQuery);
+                        $stmt = $conn2->prepare($insertQuery);
 
                         if (!$stmt) {
                             throw new Exception('Error preparando la consulta: ' . $conn->error);
@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         fclose($handle);
                         $stmt->close();
-                        // No cerramos $conn ya que viene de db.php
+                        // No cerramos $conn2 ya que viene de db.php
 
                         if ($insertedRows > 0) {
                             $message = "Proceso completado exitosamente. $insertedRows filas insertadas.";
@@ -235,10 +235,10 @@ include("includes/header.php");
 
                         <!-- Mensajes de resultado -->
                         <?php if ($message): ?>
-                        <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-                            <?php echo $message; ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
+                            <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+                                <?php echo $message; ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
                         <?php endif; ?>
 
                         <!-- Formulario de subida -->
@@ -278,42 +278,42 @@ include("includes/header.php");
 </div>
 
 <script>
-document.getElementById('uploadForm').addEventListener('submit', function() {
-    const submitBtn = document.getElementById('submitBtn');
-    const progressContainer = document.getElementById('progressContainer');
+    document.getElementById('uploadForm').addEventListener('submit', function() {
+        const submitBtn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
 
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
-    progressContainer.style.display = 'block';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
+        progressContainer.style.display = 'block';
 
-    // Simular progreso (ya que no podemos obtener el progreso real del servidor)
-    let progress = 0;
-    const interval = setInterval(function() {
-        progress += Math.random() * 15;
-        if (progress > 90) progress = 90;
-        document.getElementById('progressBar').style.width = progress + '%';
-    }, 200);
+        // Simular progreso (ya que no podemos obtener el progreso real del servidor)
+        let progress = 0;
+        const interval = setInterval(function() {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }, 200);
 
-    // Limpiar el intervalo cuando el formulario se envíe
-    setTimeout(function() {
-        clearInterval(interval);
-    }, 1000);
-});
+        // Limpiar el intervalo cuando el formulario se envíe
+        setTimeout(function() {
+            clearInterval(interval);
+        }, 1000);
+    });
 
-// Validación del archivo en el cliente
-document.getElementById('csv_file').addEventListener('change', function() {
-    const file = this.files[0];
-    if (file) {
-        if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
-            alert('El archivo es demasiado grande. Máximo 3MB permitido.');
-            this.value = '';
+    // Validación del archivo en el cliente
+    document.getElementById('csv_file').addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
+                alert('El archivo es demasiado grande. Máximo 3MB permitido.');
+                this.value = '';
+            }
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                alert('Solo se permiten archivos CSV.');
+                this.value = '';
+            }
         }
-        if (!file.name.toLowerCase().endsWith('.csv')) {
-            alert('Solo se permiten archivos CSV.');
-            this.value = '';
-        }
-    }
-});
+    });
 </script>
 
 <?php
