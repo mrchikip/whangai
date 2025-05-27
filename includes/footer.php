@@ -8,6 +8,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
     integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous">
 </script>
+<!-- Script específico para página protegida -->
+<script>
+// Proteger la página cuando carga
+document.addEventListener('DOMContentLoaded', function() {
+    protectPage();
+});
+</script>
 </body>
 
 </html>

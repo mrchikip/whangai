@@ -71,11 +71,11 @@ inputClave.addEventListener("blur", () => {
   }, 60);
 });
 
-// === FUNCIONALIDAD DE AUTENTICACIÓN FIREBASE ===
+// === FUNCIONALIDAD DE LOGIN ===
 
 // Función para manejar el login
 function handleLogin(event) {
-  event.preventDefault(); // Prevenir el envío normal del formulario
+  event.preventDefault();
 
   const email = inputUsuario.value;
   const password = inputClave.value;
@@ -136,10 +136,12 @@ function handleLogin(event) {
       mensajeEstado.textContent = errorMessage;
       mensajeEstado.style.color = "red";
 
-      // Login incorrecto: recargar index.html después de mostrar el error
+      // Limpiar campos después de error
       setTimeout(() => {
-        window.location.href = "index.html";
-      }, 2000);
+        inputUsuario.value = "";
+        inputClave.value = "";
+        mensajeEstado.textContent = "";
+      }, 3000);
     });
 }
 
@@ -150,29 +152,4 @@ document.addEventListener("DOMContentLoaded", function () {
   if (loginForm) {
     loginForm.addEventListener("submit", handleLogin);
   }
-
-  // Verificar si el usuario ya está autenticado
-  firebase.auth().onAuthStateChanged((user) => {
-    if (user) {
-      // Usuario ya está logueado, redirigir a create.php
-      console.log("Usuario ya autenticado:", user.email);
-      window.location.href = "create.php";
-    }
-  });
 });
-
-// === FUNCIONES AUXILIARES ===
-
-// Función para logout (por si la necesitas en el futuro)
-function logout() {
-  firebase
-    .auth()
-    .signOut()
-    .then(() => {
-      console.log("Usuario desconectado");
-      window.location.href = "index.html";
-    })
-    .catch((error) => {
-      console.error("Error al cerrar sesión:", error);
-    });
-}

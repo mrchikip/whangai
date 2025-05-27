@@ -18,4 +18,11 @@
         <div class="container">
             <a href="index.php" class="navbar-brand">Whangai</a>
         </div>
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <small class="text-muted">Logged in as: <span id="user-email"></span></small>
+            <div>
+                <a href="create.php" class="btn btn-sm btn-outline-primary me-2">Back to Tasks</a>
+                <button onclick="logout()" class="btn btn-sm btn-outline-secondary">Logout</button>
+            </div>
+        </div>
     </nav>
