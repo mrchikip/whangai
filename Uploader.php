@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt = $conn2->prepare($insertQuery);
 
                         if (!$stmt) {
-                            throw new Exception('Error preparando la consulta: ' . $conn->error);
+                            throw new Exception('Error preparando la consulta: ' . $conn2->error);
                         }
 
                         // Leer el archivo CSV línea por línea

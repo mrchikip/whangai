@@ -16,16 +16,15 @@
         <div class="row">
             <div class="col-md-4">
                 <?php if (isset($_SESSION['message'])) { ?>
-                    <div class="alert alert-<?= $_SESSION['message_type'] ?> alert-dismissible fade show" role="alert">
-                        <?= $_SESSION['message'] ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
-                        </button>
-                    </div>
+                <div class="alert alert-<?= $_SESSION['message_type'] ?> alert-dismissible fade show" role="alert">
+                    <?= $_SESSION['message'] ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                    </button>
+                </div>
                 <?php session_unset();
                 } ?>
 
                 <div class="card card-body">
-                    <!-- Mostrar información del usuario logueado -->
                     <form action="save_task.php" method="POST">
                         <div class="form-group mb-3">
                             <input type="text" name="tittle" class="form-control" placeholder="Task Tittle" autofocus>
@@ -57,19 +56,19 @@
                             die("Query Failed: " . mysqli_error($conn));
                         }
                         while ($row = mysqli_fetch_array($result_tasks)) { ?>
-                            <tr>
-                                <td><?php echo $row['tittle'] ?></td>
-                                <td><?php echo $row['description'] ?></td>
-                                <td><?php echo $row['createdAt'] ?></td>
-                                <td>
-                                    <a href="edit.php?id=<?php echo $row['id'] ?>" class="btn btn-secondary">
-                                        <i class="fas fa-marker"></i>
-                                    </a>
-                                    <a href="delete_task.php?id=<?php echo $row['id'] ?>" class="btn btn-danger">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </a>
-                                </td>
-                            </tr>
+                        <tr>
+                            <td><?php echo $row['tittle'] ?></td>
+                            <td><?php echo $row['description'] ?></td>
+                            <td><?php echo $row['createdAt'] ?></td>
+                            <td>
+                                <a href="edit.php?id=<?php echo $row['id'] ?>" class="btn btn-secondary">
+                                    <i class="fas fa-marker"></i>
+                                </a>
+                                <a href="delete_task.php?id=<?php echo $row['id'] ?>" class="btn btn-danger">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                            </td>
+                        </tr>
                         <?php } ?>
                     </tbody>
                 </table>

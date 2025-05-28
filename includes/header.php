@@ -14,15 +14,21 @@
 
 <body>
 
-    <nav class="navbar navbar-dark bg-dark">
-        <div class="container">
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
             <a href="index.php" class="navbar-brand">Whangai</a>
-        </div>
-        <div class="mb-3 d-flex justify-content-between align-items-center">
-            <small class="text-muted">Logged in as: <span id="user-email"></span></small>
-            <div>
-                <a href="create.php" class="btn btn-sm btn-outline-primary me-2">Back to Tasks</a>
-                <button onclick="logout()" class="btn btn-sm btn-outline-secondary">Logout</button>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarText"
+                aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse d-grid gap-2 d-md-flex justify-content-md-end" id="navbarText">
+                <span class="navbar-text">
+                    <small class="text-muted me-md-2">Logged in as: <span id="user-email"></span></small>
+                    <!-- <div> -->
+                    <a href="create.php" class="btn btn-sm btn-outline-primary me-md-2">Back to Tasks</a>
+                    <button onclick="logout()" class="btn btn-sm btn-outline-secondary">Logout</button>
+                    <!-- </div> -->
+                </span>
             </div>
         </div>
     </nav>
