@@ -15,19 +15,26 @@
 
 <body>
 
-    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+    <nav class="navbar navbar-expand-lg bg-dark border border-primary-subtle">
         <div class="container-fluid">
-            <a href="index.php" class="navbar-brand">Whangai</a>
+            <a href="index.php" class="navbar-brand text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="24" height="24" viewBox="0 0 512 512"
+                    class="d-inline-block align-text-top me-2">
+                    <path
+                        d="M512 32c0 113.6-84.6 207.5-194.2 222c-7.1-53.4-30.6-101.6-65.3-139.3C290.8 46.3 364 0 448 0l32 0c17.7 0 32 14.3 32 32zM0 96C0 78.3 14.3 64 32 64l32 0c123.7 0 224 100.3 224 224l0 32 0 160c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-160C100.3 320 0 219.7 0 96z" />
+                </svg>
+                Whangai
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarText"
                 aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse d-grid gap-2 d-md-flex justify-content-md-end" id="navbarText">
                 <span class="navbar-text">
-                    <small class="text-muted me-md-2">Logged in as: <span id="user-email"></span></small>
+                    <small class="text-white me-md-2">Logged in as: <span id="user-email"></span></small>
                     <!-- <div> -->
-                    <a href="create.php" class="btn btn-sm btn-outline-primary me-md-2">Back to Tasks</a>
-                    <button onclick="logout()" class="btn btn-sm btn-outline-secondary">Logout</button>
+                    <a href="create.php" class="btn btn-sm btn-primary me-md-2">Back to Tasks</a>
+                    <button onclick="logout()" class="btn btn-sm btn-secondary">Logout</button>
                     <!-- </div> -->
                 </span>
             </div>
