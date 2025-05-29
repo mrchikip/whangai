@@ -214,7 +214,7 @@ include("includes/header.php");
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="card shadow">
-                    <div class="card-header bg-primary text-white">
+                    <div class="card-header bg-success text-white">
                         <h3 class="card-title mb-0">
                             <i class="fas fa-upload me-2"></i>
                             Subir Archivo CSV - Puawai Sales Data
@@ -223,7 +223,7 @@ include("includes/header.php");
                     <div class="card-body">
                         <!-- Instrucciones -->
                         <div class="alert alert-info">
-                            <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Instrucciones:</h6>
+                            <h6 class="alert-heading"><i class="fas fa-success-circle me-2"></i>Instrucciones:</h6>
                             <ul class="mb-0">
                                 <li>Selecciona un archivo CSV con los datos de ventas de Puawai</li>
                                 <li>El archivo debe tener exactamente 62 columnas</li>
@@ -264,7 +264,7 @@ include("includes/header.php");
                             </div>
 
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
                                     <i class="fas fa-cloud-upload-alt me-2"></i>
                                     Subir y Procesar CSV
                                 </button>

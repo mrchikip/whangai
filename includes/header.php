@@ -15,7 +15,7 @@
 
 <body>
 
-    <nav class="navbar navbar-expand-lg bg-dark border border-primary-subtle">
+    <nav class="navbar navbar-expand-lg bg-success border border-primary-subtle">
         <div class="container-fluid">
             <a href="index.php" class="navbar-brand text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="24" height="24" viewBox="0 0 512 512"
@@ -33,7 +33,6 @@
                 <span class="navbar-text">
                     <small class="text-white me-md-2">Logged in as: <span id="user-email"></span></small>
                     <!-- <div> -->
-                    <a href="create.php" class="btn btn-sm btn-primary me-md-2">Back to Tasks</a>
                     <button onclick="logout()" class="btn btn-sm btn-secondary">Logout</button>
                     <!-- </div> -->
                 </span>

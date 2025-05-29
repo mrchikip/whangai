@@ -33,7 +33,12 @@
                             <textarea name="description" rows="2" class="form-control"
                                 placeholder="Task Description"></textarea>
                         </div>
-                        <input type="submit" class="btn btn-success btn-block" name="save_task" value="Save Task">
+                        <input type="submit" class="btn btn-success btn-lg w-100" name="save_task" value="Save Task">
+                        <button type="button" class="btn btn-success btn-lg w-100"
+                            onclick="window.location.href='Uploader.php'">
+                            <i class="fas fa-cloud-upload-alt me-2"></i>
+                            Uploader
+                        </button>
                     </form>
                 </div>
             </div>
