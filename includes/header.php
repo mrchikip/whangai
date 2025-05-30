@@ -31,41 +31,72 @@
             </button>
             <div class="collapse navbar-collapse d-grid gap-2 d-md-flex justify-content-md-end" id="navbarText">
                 <span class="navbar-text">
-                    <small class="text-white me-md-2">Estado Licencia: <span id="license-status"></span></small>
-                    <!-- <div> -->
+                    <small class="text-white me-md-2">Usuario: <span id="user-email"></span></small>
                     <button onclick="logout()" class="btn btn-sm btn-secondary">Logout</button>
-                    <!-- </div> -->
                 </span>
             </div>
         </div>
     </nav>
 
     <script>
-    // Función para actualizar el estado de la licencia en el header
-    function updateLicenseStatus() {
-        fetch('check_license_status.php')
-            .then(response => response.json())
-            .then(data => {
-                const licenseStatusElement = document.getElementById('license-status');
-                if (licenseStatusElement) {
-                    if (data.license_valid) {
-                        licenseStatusElement.innerHTML = '<span class="text-success fw-bold">Válida</span>';
-                    } else {
-                        licenseStatusElement.innerHTML = '<span class="text-danger fw-bold">Inválida</span>';
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error actualizando estado de licencia:', error);
-                const licenseStatusElement = document.getElementById('license-status');
-                if (licenseStatusElement) {
-                    licenseStatusElement.innerHTML = '<span class="text-warning fw-bold">Error</span>';
+        // Función para mostrar el email del usuario en el header
+        function updateUserInfo() {
+            checkAuth(function(user) {
+                const userEmailElement = document.getElementById('user-email');
+                if (userEmailElement && user) {
+                    userEmailElement.textContent = user.email;
                 }
             });
-    }
+        }
 
-    // Actualizar el estado cuando carga la página
-    document.addEventListener('DOMContentLoaded', function() {
-        updateLicenseStatus();
-    });
+        // Función de logout mejorada para usar includes/logout.php
+        function logout() {
+            // Primero cerrar sesión en Firebase
+            firebase.auth().signOut().then(() => {
+                console.log('Usuario desconectado de Firebase');
+
+                // Luego limpiar la sesión PHP usando includes/logout.php
+                fetch('includes/logout.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('Sesión PHP cerrada:', data.message);
+                        } else {
+                            console.warn('Error cerrando sesión PHP:', data.message || 'Error desconocido');
+                        }
+                        // Redirigir independientemente del resultado
+                        window.location.href = 'index.php';
+                    })
+                    .catch(error => {
+                        console.error('Error al cerrar sesión PHP:', error);
+                        // Redirigir de todas formas ya que Firebase ya cerró sesión
+                        window.location.href = 'index.php';
+                    });
+            }).catch((error) => {
+                console.error('Error al cerrar sesión en Firebase:', error);
+                // Si Firebase falla, intentar cerrar sesión PHP de todas formas
+                fetch('includes/logout.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(() => {
+                        window.location.href = 'index.php';
+                    })
+                    .catch(() => {
+                        window.location.href = 'index.php';
+                    });
+            });
+        }
+
+        // Actualizar la información del usuario cuando carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            updateUserInfo();
+        });
     </script>

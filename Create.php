@@ -83,7 +83,7 @@
 </div>
 
 <script>
-// Al cargar create.php, proteger la página y verificar licencia
+// Al cargar create.php, proteger la página
 document.addEventListener('DOMContentLoaded', function() {
     protectPage();
 });

@@ -8,7 +8,6 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="estilos.css" />
     <title>Login Whangai</title>
-    <?php include("db.php") ?>
     <?php include("includes/auth.php"); ?>
 </head>
 

@@ -77,46 +77,18 @@ if (inputClave && monster) {
   });
 }
 
-// === FUNCIONES DE AUTENTICACIÓN Y LICENCIA ===
-
-// Función para verificar si está logueado y validar licencia (evitar conflicto con auth.php)
-function checkAuthAndLicense() {
-  // Primero verificar si hay usuario en Firebase
-  if (typeof firebase !== "undefined" && firebase.auth) {
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user) {
-        // Usuario logueado en Firebase, ahora verificar licencia en PHP
-        checkLicenseStatus();
-      }
-      // Si no hay usuario en Firebase, permanece en login
-    });
-  }
-}
-
-// Función para verificar el estado de la licencia
-function checkLicenseStatus() {
-  fetch("check_license_status.php")
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.user_logged_in && data.license_valid) {
-        // Usuario logueado con licencia válida
-        window.location.href = "create.php";
-      } else if (data.user_logged_in && !data.license_valid) {
-        // Usuario logueado pero sin licencia válida
-        window.location.href = "licencia.php";
-      }
-      // Si no está logueado en PHP, permanece en index.php
-    })
-    .catch((error) => {
-      console.error("Error verificando estado de licencia:", error);
-    });
-}
+// === FUNCIONES DE AUTENTICACIÓN ===
 
 // Función a llamar después de un login exitoso de Firebase
 function onFirebaseLoginSuccess(user) {
   const mensajeEstado = document.getElementById("mensaje-estado");
 
-  // Crear sesión PHP después del login de Firebase
+  if (mensajeEstado) {
+    mensajeEstado.textContent = "Login exitoso. Redirigiendo...";
+    mensajeEstado.style.color = "green";
+  }
+
+  // Crear sesión PHP después del login de Firebase (opcional, si necesitas PHP)
   fetch("create_php_session.php", {
     method: "POST",
     headers: {
@@ -130,26 +102,17 @@ function onFirebaseLoginSuccess(user) {
     .then((response) => response.json())
     .then((data) => {
       if (data.success) {
-        // Sesión PHP creada, ahora verificar licencia
-        if (mensajeEstado) {
-          mensajeEstado.textContent = "Verificando licencia...";
-          mensajeEstado.style.color = "blue";
-        }
-
-        checkLicenseStatus();
+        // Sesión PHP creada exitosamente, redirigir
+        window.location.href = "create.php";
       } else {
-        if (mensajeEstado) {
-          mensajeEstado.textContent = "Error creando sesión";
-          mensajeEstado.style.color = "red";
-        }
+        // Redirigir de todas formas ya que Firebase está autenticado
+        window.location.href = "create.php";
       }
     })
     .catch((error) => {
       console.error("Error creando sesión PHP:", error);
-      if (mensajeEstado) {
-        mensajeEstado.textContent = "Error de conexión";
-        mensajeEstado.style.color = "red";
-      }
+      // Redirigir de todas formas ya que Firebase está autenticado
+      window.location.href = "create.php";
     });
 }
 
@@ -198,13 +161,7 @@ function handleLogin(event) {
       const user = userCredential.user;
       console.log("Usuario logueado en Firebase:", user.email);
 
-      // Mostrar mensaje de éxito
-      if (mensajeEstado) {
-        mensajeEstado.textContent = "Login exitoso. Verificando licencia...";
-        mensajeEstado.style.color = "green";
-      }
-
-      // Llamar función para crear sesión PHP y verificar licencia
+      // Llamar función para crear sesión PHP y redirigir
       onFirebaseLoginSuccess(user);
     })
     .catch((error) => {
@@ -254,7 +211,4 @@ document.addEventListener("DOMContentLoaded", function () {
   if (loginForm) {
     loginForm.addEventListener("submit", handleLogin);
   }
-
-  // Nota: checkAuthAndLicense() se llama desde auth.php como checkIfAlreadyLoggedIn()
-  // para evitar duplicación de lógica
 });
