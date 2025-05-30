@@ -31,7 +31,7 @@
             </button>
             <div class="collapse navbar-collapse d-grid gap-2 d-md-flex justify-content-md-end" id="navbarText">
                 <span class="navbar-text">
-                    <small class="text-white me-md-2">Logged in as: <span id="user-email"></span></small>
+                    <small class="text-white me-md-2">Estado Licencia: <span id="license-status"></span></small>
                     <!-- <div> -->
                     <button onclick="logout()" class="btn btn-sm btn-secondary">Logout</button>
                     <!-- </div> -->
@@ -39,3 +39,33 @@
             </div>
         </div>
     </nav>
+
+    <script>
+    // Función para actualizar el estado de la licencia en el header
+    function updateLicenseStatus() {
+        fetch('check_license_status.php')
+            .then(response => response.json())
+            .then(data => {
+                const licenseStatusElement = document.getElementById('license-status');
+                if (licenseStatusElement) {
+                    if (data.license_valid) {
+                        licenseStatusElement.innerHTML = '<span class="text-success fw-bold">Válida</span>';
+                    } else {
+                        licenseStatusElement.innerHTML = '<span class="text-danger fw-bold">Inválida</span>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error actualizando estado de licencia:', error);
+                const licenseStatusElement = document.getElementById('license-status');
+                if (licenseStatusElement) {
+                    licenseStatusElement.innerHTML = '<span class="text-warning fw-bold">Error</span>';
+                }
+            });
+    }
+
+    // Actualizar el estado cuando carga la página
+    document.addEventListener('DOMContentLoaded', function() {
+        updateLicenseStatus();
+    });
+    </script>

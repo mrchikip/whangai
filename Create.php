@@ -82,4 +82,11 @@
     </div>
 </div>
 
+<script>
+// Al cargar create.php, proteger la página y verificar licencia
+document.addEventListener('DOMContentLoaded', function() {
+    protectPage();
+});
+</script>
+
 <?php include("includes/footer.php") ?>

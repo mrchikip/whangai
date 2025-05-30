@@ -8,7 +8,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="estilos.css" />
     <title>Login Whangai</title>
-
+    <?php include("db.php") ?>
     <?php include("includes/auth.php"); ?>
 </head>
 
@@ -30,7 +30,7 @@
     <script>
     // Verificar si ya está logueado cuando la página carga
     document.addEventListener('DOMContentLoaded', function() {
-        checkIfLoggedIn();
+        checkIfAlreadyLoggedIn();
     });
     </script>
 </body>
