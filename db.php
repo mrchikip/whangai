@@ -22,10 +22,18 @@ $conn = mysqli_connect(
     'lcksgrol8_raihana'
 );
 
+// Database cks remote puawai
+//$conn2 = mysqli_connect(
+//    '44.211.14.38',
+//    'lcksgrol8_cks',
+//    'Sandia3415',
+//    'lcksgrol8_puawai'
+//);
+
 // Database remote puawai
 $conn2 = mysqli_connect(
-    '44.211.14.38',
-    'lcksgrol8_cks',
+    '184.154.139.180',
+    'superadminvs_cks',
     'Sandia3415',
-    'lcksgrol8_puawai'
+    'superadminvs_puawai'
 );

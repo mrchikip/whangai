@@ -5,7 +5,7 @@ include("db.php");
 include("includes/auth.php");
 
 // Configuración de seguridad
-define('MAX_FILE_SIZE', 3 * 1024 * 1024); // 3MB
+define('MAX_FILE_SIZE', 4 * 1024 * 1024); // 4MB
 define('ALLOWED_EXTENSIONS', ['csv']);
 define('UPLOAD_DIR', 'uploads/');
 
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Validar tamaño
             if ($file['size'] > MAX_FILE_SIZE) {
-                $message = 'El archivo es demasiado grande. Máximo 3MB.';
+                $message = 'El archivo es demasiado grande. Máximo 4MB.';
                 $messageType = 'danger';
             } else {
                 // Validar extensión
@@ -88,8 +88,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         mysqli_set_charset($conn2, 'utf8');
 
                         // Preparar la consulta de inserción
+                        // Nota: No incluimos IdSaleTrx porque es AUTO_INCREMENT
                         $insertQuery = "INSERT INTO sales (
-                            DataOrigin, InvoiceNumber, PrebookNumber, PrebookCreatedOn, InvoiceDate,
+                            InvoiceNumber, PrebookNumber, PrebookCreatedOn, InvoiceDate,
                             PONumber, SONumber, FarmShipDate, AWB, TruckDate, TruckMonth,
                             FarmName, Brand, FarmCode, Origin, ShipVia, Location, Customer,
                             PriceList, City, State, ZipCode, CustomerType, Salesperson,
@@ -100,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             DutiesCostUnit, LandedCostUnit, GPM, TotalHandling, TotalAWBFreight,
                             TotalLandedCost, OrderType, CustomerCode, ProductLegacyCode,
                             ProductVBN, CarrierCode, SalespersonCode, Cubes, Aging, svfactores
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
                         $stmt = $conn2->prepare($insertQuery);
 
@@ -126,20 +127,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 continue;
                             }
 
-                            // Verificar que tenemos el número correcto de columnas
+                            // Verificar que tenemos el número correcto de columnas (62)
                             if (count($data) !== 62) {
                                 $errors[] = "Línea $lineNumber: Número incorrecto de columnas (" . count($data) . " encontradas, 62 esperadas)";
                                 continue;
                             }
 
-                            // Sanitizar y procesar los datos
-                            $cleanData = array_map('sanitizeData', $data);
+                            // Saltar la primera columna (IdSaleTrx) ya que es AUTO_INCREMENT
+                            $dataWithoutId = array_slice($data, 1);
 
-                            // Convertir fechas
-                            $cleanData[3] = convertDate($cleanData[3]); // PrebookCreatedOn
-                            $cleanData[4] = convertDate($cleanData[4]); // InvoiceDate
-                            $cleanData[7] = convertDate($cleanData[7]); // FarmShipDate
-                            $cleanData[9] = convertDate($cleanData[9]); // TruckDate
+                            // Sanitizar y procesar los datos (ahora son 61 columnas)
+                            $cleanData = array_map('sanitizeData', $dataWithoutId);
+
+                            // Convertir fechas (índices ajustados después de remover IdSaleTrx)
+                            $cleanData[2] = convertDate($cleanData[2]); // PrebookCreatedOn (índice 2)
+                            $cleanData[3] = convertDate($cleanData[3]); // InvoiceDate (índice 3)
+                            $cleanData[6] = convertDate($cleanData[6]); // FarmShipDate (índice 6)
+                            $cleanData[8] = convertDate($cleanData[8]); // TruckDate (índice 8)
 
                             // Convertir valores numéricos y manejar valores vacíos
                             for ($i = 0; $i < count($cleanData); $i++) {
@@ -148,8 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
 
-                            // Bind parameters (todos como string inicialmente, MySQL hará las conversiones)
-                            $stmt->bind_param(str_repeat('s', 62), ...array_values($cleanData));
+                            // Bind parameters - usar 61 parámetros tipo 's'
+                            $stmt->bind_param(str_repeat('s', 61), ...array_values($cleanData));
 
                             if ($stmt->execute()) {
                                 $insertedRows++;
@@ -223,22 +227,23 @@ include("includes/header.php");
                     <div class="card-body">
                         <!-- Instrucciones -->
                         <div class="alert alert-info">
-                            <h6 class="alert-heading"><i class="fas fa-success-circle me-2"></i>Instrucciones:</h6>
+                            <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Instrucciones:</h6>
                             <ul class="mb-0">
                                 <li>Selecciona un archivo CSV con los datos de ventas de Puawai</li>
                                 <li>El archivo debe tener exactamente 62 columnas</li>
                                 <li>La primera fila debe contener los encabezados</li>
-                                <li>Tamaño máximo: 3MB</li>
+                                <li>La primera columna (IdSaleTrx) se omite automáticamente</li>
+                                <li>Tamaño máximo: 4MB</li>
                                 <li>Formatos de fecha soportados: m/d/Y o n/j/Y (con o sin hora)</li>
                             </ul>
                         </div>
 
                         <!-- Mensajes de resultado -->
                         <?php if ($message): ?>
-                            <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-                                <?php echo $message; ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
+                        <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+                            <?php echo $message; ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
                         <?php endif; ?>
 
                         <!-- Formulario de subida -->
@@ -253,7 +258,7 @@ include("includes/header.php");
                                     required>
                                 <div class="form-text">
                                     <i class="fas fa-exclamation-triangle text-warning me-1"></i>
-                                    Archivo CSV requerido (máximo 3MB)
+                                    Archivo CSV requerido (máximo 4MB)
                                 </div>
                             </div>
 
@@ -278,42 +283,42 @@ include("includes/header.php");
 </div>
 
 <script>
-    document.getElementById('uploadForm').addEventListener('submit', function() {
-        const submitBtn = document.getElementById('submitBtn');
-        const progressContainer = document.getElementById('progressContainer');
+document.getElementById('uploadForm').addEventListener('submit', function() {
+    const submitBtn = document.getElementById('submitBtn');
+    const progressContainer = document.getElementById('progressContainer');
 
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
-        progressContainer.style.display = 'block';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
+    progressContainer.style.display = 'block';
 
-        // Simular progreso (ya que no podemos obtener el progreso real del servidor)
-        let progress = 0;
-        const interval = setInterval(function() {
-            progress += Math.random() * 15;
-            if (progress > 90) progress = 90;
-            document.getElementById('progressBar').style.width = progress + '%';
-        }, 200);
+    // Simular progreso (ya que no podemos obtener el progreso real del servidor)
+    let progress = 0;
+    const interval = setInterval(function() {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        document.getElementById('progressBar').style.width = progress + '%';
+    }, 200);
 
-        // Limpiar el intervalo cuando el formulario se envíe
-        setTimeout(function() {
-            clearInterval(interval);
-        }, 1000);
-    });
+    // Limpiar el intervalo cuando el formulario se envíe
+    setTimeout(function() {
+        clearInterval(interval);
+    }, 1000);
+});
 
-    // Validación del archivo en el cliente
-    document.getElementById('csv_file').addEventListener('change', function() {
-        const file = this.files[0];
-        if (file) {
-            if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
-                alert('El archivo es demasiado grande. Máximo 3MB permitido.');
-                this.value = '';
-            }
-            if (!file.name.toLowerCase().endsWith('.csv')) {
-                alert('Solo se permiten archivos CSV.');
-                this.value = '';
-            }
+// Validación del archivo en el cliente
+document.getElementById('csv_file').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+        if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
+            alert('El archivo es demasiado grande. Máximo 4MB permitido.');
+            this.value = '';
         }
-    });
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            alert('Solo se permiten archivos CSV.');
+            this.value = '';
+        }
+    }
+});
 </script>
 
 <?php
