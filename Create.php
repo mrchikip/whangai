@@ -1,10 +1,10 @@
-<?php 
+<?php
 // Incluye la conexión a la base de datos
-include("db.php"); 
+include("db.php");
 // Incluye la protección de autenticación de usuario
-include("includes/auth.php"); 
+include("includes/auth.php");
 // Incluye la cabecera HTML y recursos
-include("includes/header.php"); 
+include("includes/header.php");
 ?>
 
 <!-- Elemento para mostrar mensaje de carga durante verificación de autenticación -->
@@ -20,7 +20,7 @@ include("includes/header.php");
     <div class="container p-4">
         <div class="row">
             <div class="col-md-4">
-                <?php 
+                <?php
                 // Muestra mensaje de alerta si existe en sesión
                 if (isset($_SESSION['message'])) { ?>
                     <div class="alert alert-<?= $_SESSION['message_type'] ?> alert-dismissible fade show" role="alert">
@@ -103,7 +103,7 @@ include("includes/header.php");
     });
 </script>
 
-<?php 
+<?php
 // Incluye el pie de página
-include("includes/footer.php"); 
+include("includes/footer.php");
 ?>
