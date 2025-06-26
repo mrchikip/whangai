@@ -43,8 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = 'Debe seleccionar una fecha.';
             $messageType = 'danger';
         } else {
-            // Convertir la fecha de YYYY-MM-DD a YYYY/MM/DD
-            $ddate = str_replace('-', '/', $selectedDate);
+            // La fecha ya viene en formato YYYY-MM-DD del input date, mantenerla así
+            $ddate = $selectedDate;
 
             try {
                 // Verificar conexión a la base de datos
@@ -149,7 +149,8 @@ include("includes/header.php");
                                                     </div>
 
                                                     <!-- Título centrado -->
-                                                    <h5 class="card-title text-center mb-3">Fecha de Actualización</h5>
+                                                    <h5 class="card-title text-center mb-3">1- Fecha de Actualización
+                                                    </h5>
 
                                                     <!-- Descripción centrada -->
                                                     <p class="card-text text-center flex-grow-1 mb-4">
@@ -193,21 +194,26 @@ include("includes/header.php");
                                                         <!-- Botones de acción -->
                                                         <div class="mt-auto">
                                                             <div class="d-grid gap-2">
-                                                                <button type="submit" name="prepare_sales"
+                                                                <button type="button" id="prepareSalesBtn"
                                                                     class="btn btn-success btn-lg w-100"
-                                                                    onclick="return confirmAction('Sales', document.getElementById('datadate').value)">
+                                                                    onclick="checkAndConfirmDelete('sales')">
                                                                     <i class="fa-solid fa-sack-dollar me-2"></i>
                                                                     Prepare Sales
                                                                 </button>
 
-                                                                <button type="submit" name="prepare_credits"
+                                                                <button type="button" id="prepareCreditsBtn"
                                                                     class="btn btn-success btn-lg w-100"
-                                                                    onclick="return confirmAction('Credits', document.getElementById('datadate').value)">
+                                                                    onclick="checkAndConfirmDelete('credits')">
                                                                     <i class="fa-solid fa-hand-holding-dollar me-2"></i>
                                                                     Prepare Credits
                                                                 </button>
                                                             </div>
                                                         </div>
+
+                                                        <!-- Botones ocultos para envío real del formulario -->
+                                                        <input type="hidden" id="hiddenSalesBtn" name="prepare_sales">
+                                                        <input type="hidden" id="hiddenCreditsBtn"
+                                                            name="prepare_credits">
                                                     </form>
                                                 </div>
                                             </div>
@@ -219,26 +225,28 @@ include("includes/header.php");
                                                 <div class="card-body d-flex flex-column text-center">
                                                     <!-- Icono -->
                                                     <div class="mb-3">
-                                                        <i class="fa-solid fa-dolly"
+                                                        <i class="fas fa-cloud-upload-alt me-2"
                                                             style="font-size: 3rem; color: #198754;"></i>
                                                     </div>
 
                                                     <!-- Título centrado -->
-                                                    <h5 class="card-title text-center mb-3">Requerimientos y Solicitudes
+                                                    <h5 class="card-title text-center mb-3">2- Carga de Información
+                                                        Actualizada
                                                     </h5>
 
                                                     <!-- Descripción centrada -->
                                                     <p class="card-text text-center flex-grow-1 mb-4">
-                                                        Acceso al módulo para solicitudes de servicio, cambios, o
-                                                        requerimientos
+                                                        Modulo de seleccion y carga de archivos CSV con informacion
+                                                        actualizada para la base de datos
                                                     </p>
 
                                                     <!-- Botón centrado en la parte inferior -->
                                                     <div class="mt-auto">
+                                                        <!-- Botón para ir a la página de subida de archivos -->
                                                         <button type="button" class="btn btn-success btn-lg w-100"
-                                                            onclick="window.location.href='#'">
-                                                            <i class="fa-solid fa-dolly me-2"></i>
-                                                            Request
+                                                            onclick="window.location.href='Uploader.php'">
+                                                            <i class="fas fa-cloud-upload-alt me-2"></i>
+                                                            Uploader
                                                         </button>
                                                     </div>
                                                 </div>
@@ -384,7 +392,156 @@ include("includes/header.php");
 </div>
 
 <script>
-// Función de confirmación antes de ejecutar la eliminación
+// Función para verificar cantidad de registros y confirmar eliminación
+function checkAndConfirmDelete(action) {
+    const dateInput = document.getElementById('datadate');
+    const selectedDate = dateInput.value;
+
+    if (!selectedDate) {
+        alert('Por favor seleccione una fecha antes de continuar.');
+        dateInput.focus();
+        return false;
+    }
+
+    // Convertir fecha a formato YYYY-MM-DD (ya viene en este formato del input date)
+    const ddate = selectedDate;
+
+    // Mostrar loading en el botón correspondiente
+    const button = action === 'sales' ? document.getElementById('prepareSalesBtn') : document.getElementById(
+        'prepareCreditsBtn');
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verificando...';
+
+    // Hacer petición AJAX para contar registros (usando archivo corregido)
+    fetch('check_records.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                action: action,
+                date: ddate,
+                csrf_token: document.querySelector('input[name="csrf_token"]').value
+            })
+        })
+        .then(response => {
+            // Debug: mostrar el status de la respuesta
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+
+            // Intentar obtener el texto de la respuesta para debugging
+            return response.text().then(text => {
+                console.log('Response text:', text);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}, response: ${text}`);
+                }
+
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    throw new Error(`JSON parse error: ${e.message}, response: ${text}`);
+                }
+            });
+        })
+        .then(data => {
+            console.log('Response data:', data); // Debug completo
+
+            // Mostrar información de debug si está disponible
+            if (data.debug) {
+                console.log('Debug info:', data.debug);
+            }
+
+            // Restaurar botón
+            button.disabled = false;
+            button.innerHTML = originalText;
+
+            if (data.success) {
+                const recordCount = data.count;
+                const formattedDate = new Date(selectedDate).toLocaleDateString('es-ES');
+                const actionText = action === 'sales' ? 'Ventas' : 'Créditos';
+
+                let confirmMessage;
+                if (recordCount === 0) {
+                    confirmMessage =
+                        `No se encontraron registros de ${actionText} desde la fecha ${formattedDate}.\n\n¿Desea continuar de todas formas?`;
+                } else {
+                    confirmMessage =
+                        `¿Está seguro de eliminar ${recordCount} registros de ${actionText} desde ${formattedDate}?\n\nEsta acción no se puede deshacer.`;
+                }
+
+                if (confirm(confirmMessage)) {
+                    // Usuario confirmó, proceder con la eliminación
+                    submitForm(action);
+                }
+            } else {
+                // Mostrar error con información de debug si está disponible
+                let errorMsg = 'Error al verificar registros: ' + (data.message || 'Error desconocido');
+
+                if (data.debug) {
+                    errorMsg += '\n\nInfo de debug:\n';
+                    errorMsg += `Paso: ${data.debug.step || 'desconocido'}\n`;
+                    if (data.debug.error) {
+                        errorMsg += `Error: ${data.debug.error}\n`;
+                    }
+                    if (data.debug.session_status) {
+                        errorMsg += `Sesión: ${data.debug.session_status}\n`;
+                    }
+                    if (data.debug.user_logged_in) {
+                        errorMsg += `Usuario logueado: ${data.debug.user_logged_in}\n`;
+                    }
+                }
+
+                alert(errorMsg);
+            }
+        })
+        .catch(error => {
+            // Restaurar botón en caso de error
+            button.disabled = false;
+            button.innerHTML = originalText;
+
+            console.error('Fetch error details:', error);
+
+            // Mensaje más específico según el tipo de error
+            let errorMessage = 'Error de conexión al verificar registros.\n\n';
+            errorMessage += `Detalles técnicos: ${error.message}\n\n`;
+
+            if (error.name === 'TypeError') {
+                errorMessage += 'Verifique que el archivo debug_check_records.php existe.';
+            } else if (error.message.includes('HTTP error')) {
+                errorMessage += `Código de error HTTP detectado.`;
+            } else if (error.message.includes('JSON parse')) {
+                errorMessage += 'La respuesta del servidor no es JSON válido.';
+            }
+
+            errorMessage += '\n\nRevise la consola del navegador (F12) para más detalles.';
+
+            alert(errorMessage);
+        });
+}
+
+// Función para enviar el formulario después de la confirmación
+function submitForm(action) {
+    const form = document.getElementById('preparationForm');
+
+    // Limpiar campos ocultos previos
+    document.getElementById('hiddenSalesBtn').disabled = true;
+    document.getElementById('hiddenCreditsBtn').disabled = true;
+
+    // Habilitar solo el campo correspondiente
+    if (action === 'sales') {
+        document.getElementById('hiddenSalesBtn').disabled = false;
+    } else {
+        document.getElementById('hiddenCreditsBtn').disabled = false;
+    }
+
+    // Enviar formulario
+    form.submit();
+}
+
+// Función original de confirmación (ahora no se usa, pero se mantiene por compatibilidad)
 function confirmAction(action, selectedDate) {
     if (!selectedDate) {
         alert('Por favor seleccione una fecha antes de continuar.');
