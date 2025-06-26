@@ -103,16 +103,16 @@ function onFirebaseLoginSuccess(user) {
     .then((data) => {
       if (data.success) {
         // Sesión PHP creada exitosamente, redirigir
-        window.location.href = "create.php";
+        window.location.href = "Landing.php";
       } else {
         // Redirigir de todas formas ya que Firebase está autenticado
-        window.location.href = "create.php";
+        window.location.href = "Landing.php";
       }
     })
     .catch((error) => {
       console.error("Error creando sesión PHP:", error);
       // Redirigir de todas formas ya que Firebase está autenticado
-      window.location.href = "create.php";
+      window.location.href = "Landing.php";
     });
 }
 
