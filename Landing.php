@@ -23,11 +23,11 @@ include("includes/header.php");
                 <?php
                 // Muestra mensaje de alerta si existe en sesión
                 if (isset($_SESSION['message'])) { ?>
-                    <div class="alert alert-<?= $_SESSION['message_type'] ?> alert-dismissible fade show" role="alert">
-                        <?= $_SESSION['message'] ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
-                        </button>
-                    </div>
+                <div class="alert alert-<?= $_SESSION['message_type'] ?> alert-dismissible fade show" role="alert">
+                    <?= $_SESSION['message'] ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                    </button>
+                </div>
                 <?php session_unset();
                 } ?>
 
@@ -60,7 +60,7 @@ include("includes/header.php");
                                                     <!-- Botón centrado en la parte inferior -->
                                                     <div class="mt-auto">
                                                         <button type="button" class="btn btn-success btn-lg w-100"
-                                                            onclick="window.location.href='Uploader.php'">
+                                                            onclick="window.location.href='updater.php'">
                                                             <i class="fas fa-cloud-upload-alt me-2"></i>
                                                             Update
                                                         </button>
@@ -112,10 +112,10 @@ include("includes/header.php");
 </div>
 
 <script>
-    // Al cargar create.php, proteger la página
-    document.addEventListener('DOMContentLoaded', function() {
-        protectPage();
-    });
+// Al cargar create.php, proteger la página
+document.addEventListener('DOMContentLoaded', function() {
+    protectPage();
+});
 </script>
 
 <?php

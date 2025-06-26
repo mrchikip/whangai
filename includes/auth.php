@@ -45,7 +45,7 @@
         `;
         errorDiv.textContent = message;
         document.body.appendChild(errorDiv);
-        
+
         setTimeout(() => {
             if (errorDiv.parentNode) {
                 errorDiv.parentNode.removeChild(errorDiv);
@@ -77,7 +77,7 @@
                 } else {
                     console.log('Usuario autenticado:', user.email);
                     authUser = user;
-                    
+
                     // Usuario autenticado, mostrar contenido
                     if (mainContent) mainContent.style.display = 'block';
                     if (loadingMessage) loadingMessage.style.display = 'none';
@@ -112,12 +112,12 @@
     // Función para verificar si ya está logueado (para index.php)
     function checkIfAlreadyLoggedIn() {
         initializeFirebase();
-        
+
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
-                console.log('Usuario ya autenticado, redirigiendo a create.php');
+                console.log('Usuario ya autenticado, redirigiendo a Landing.php');
                 setTimeout(() => {
-                    window.location.href = 'create.php';
+                    window.location.href = 'Landing.php';
                 }, 100);
             }
             // Si no hay usuario en Firebase, permanece en index.php
@@ -143,7 +143,7 @@
         firebase.auth().signOut().then(() => {
             console.log('Usuario desconectado de Firebase');
             authUser = null;
-            
+
             // Limpiar la sesión PHP si existe
             return fetch('logout.php', {
                 method: 'POST',
@@ -156,13 +156,13 @@
         }).catch((error) => {
             console.error('Error al cerrar sesión:', error);
             showError('Error al cerrar sesión');
-            
+
             // Restaurar botón
             if (logoutBtn) {
                 logoutBtn.disabled = false;
                 logoutBtn.textContent = 'Cerrar Sesión';
             }
-            
+
             // Forzar redirección en caso de error
             setTimeout(() => {
                 window.location.href = 'index.php';
@@ -173,7 +173,7 @@
     // Función para verificar si el usuario está autenticado (sin redirección)
     function checkAuth(callback) {
         initializeFirebase();
-        
+
         firebase.auth().onAuthStateChanged((user) => {
             callback(user);
         }, (error) => {
@@ -243,8 +243,13 @@
     }
 
     @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
     }
 
     /* Estilos para mensajes de error */
@@ -256,4 +261,4 @@
         margin: 1rem 0;
         text-align: center;
     }
-</style> 
+</style>
