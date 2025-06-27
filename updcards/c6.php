@@ -3,12 +3,11 @@
         <div class="card-body d-flex flex-column text-center">
             <!-- Icono -->
             <div class="mb-3">
-                <i class="fa-solid fa-dolly"
-                    style="font-size: 3rem; color: #198754;"></i>
+                <i class="fa-solid fa-dolly" style="font-size: 3rem; color: #FFD900FF;"></i>
             </div>
 
             <!-- Título centrado -->
-            <h5 class="card-title text-center mb-3">Requerimientos y Solicitudes
+            <h5 class="card-title text-center mb-3">En Construccion
             </h5>
 
             <!-- Descripción centrada -->
@@ -19,8 +18,7 @@
 
             <!-- Botón centrado en la parte inferior -->
             <div class="mt-auto">
-                <button type="button" class="btn btn-success btn-lg w-100"
-                    onclick="window.location.href='#'">
+                <button type="button" class="btn btn-warning btn-lg w-100" onclick="window.location.href='#'">
                     <i class="fa-solid fa-dolly me-2"></i>
                     Request
                 </button>

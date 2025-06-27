@@ -23,7 +23,7 @@
                 <button type="button" class="btn btn-success btn-lg w-100"
                     onclick="window.location.href='SalesUploader.php'">
                     <i class="fas fa-cloud-upload-alt me-2"></i>
-                    Uploader
+                    Sales Uploader
                 </button>
             </div>
         </div>
