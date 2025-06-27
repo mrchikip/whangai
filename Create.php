@@ -44,7 +44,7 @@ include("includes/header.php");
                         <input type="submit" class="btn btn-success btn-lg w-100" name="save_task" value="Save Task">
                         <!-- Botón para ir a la página de subida de archivos -->
                         <button type="button" class="btn btn-success btn-lg w-100"
-                            onclick="window.location.href='Uploader.php'">
+                            onclick="window.location.href='SalesUploader.php'">
                             <i class="fas fa-cloud-upload-alt me-2"></i>
                             Uploader
                         </button>
