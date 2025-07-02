@@ -4,31 +4,11 @@ include("db.php");
 // Incluir autenticación Firebase
 include("includes/auth.php");
 
-// Verificar disponibilidad de funciones PHP básicas
-function checkPHPExtensions()
-{
-    $missing = [];
-    $alternatives = [];
-
-    if (!function_exists('file_get_contents')) {
-        $missing[] = 'file_get_contents';
-        $alternatives[] = 'Función PHP básica requerida';
-    }
-
-    if (!function_exists('preg_match')) {
-        $missing[] = 'preg_match (PCRE)';
-        $alternatives[] = 'Extensión PCRE requerida (generalmente incluida)';
-    }
-
-    // Esta implementación no requiere ZipArchive, DOMDocument es opcional
-
-    return ['missing' => $missing, 'alternatives' => $alternatives];
-}
-
 // Configuración de seguridad
 define('MAX_FILE_SIZE', 10 * 1024 * 1024); // 10MB para XLSX
 define('ALLOWED_EXTENSIONS', ['xlsx']);
 define('UPLOAD_DIR', 'uploads/');
+define('DATABASE_COLUMNS', 31); // Las columnas que van a la base de datos
 
 // Función para generar token CSRF
 function generateCSRFToken()
@@ -51,7 +31,7 @@ function sanitizeData($data)
     return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
 }
 
-// Función para convertir fecha específica para credits (consistente con salesuploader.php)
+// Función para convertir fecha específica para credits
 function convertCreditDate($dateString)
 {
     if (empty($dateString)) return null;
@@ -63,7 +43,7 @@ function convertCreditDate($dateString)
         return date('Y-m-d', $unix_date);
     }
 
-    // Si es string, intentar parsear (mismo formato que salesuploader.php)
+    // Si es string, intentar parsear
     $date = DateTime::createFromFormat('n/j/Y', $dateString);
     if ($date === false) {
         $date = DateTime::createFromFormat('m/d/Y', $dateString);
@@ -81,91 +61,267 @@ function convertCreditDate($dateString)
     return $date !== false ? $date->format('Y-m-d') : null;
 }
 
-// Clase simple para leer archivos XLSX sin dependencias externas
-class SimpleXLSXReader
+// Clase para manejar XLSX con data descriptors
+class DataDescriptorXLSXReader
 {
-    private $zip;
     private $strings = [];
+    private $worksheetData = [];
 
-    public function __construct($filepath)
+    public function __construct($xlsxPath)
     {
-        $this->zip = new ZipArchive;
-        if ($this->zip->open($filepath) !== TRUE) {
-            throw new Exception('No se pudo abrir el archivo XLSX');
+        if (!$this->extractWithDataDescriptors($xlsxPath)) {
+            throw new Exception('No se pudo extraer el archivo XLSX. Verifique que sea un archivo válido.');
         }
-        $this->loadSharedStrings();
     }
 
-    private function loadSharedStrings()
+    private function extractWithDataDescriptors($xlsxPath)
     {
-        $xml = $this->zip->getFromName('xl/sharedStrings.xml');
-        if ($xml === false) {
-            return; // No hay strings compartidos
+        $fileContent = file_get_contents($xlsxPath);
+        if ($fileContent === false || strlen($fileContent) < 4) {
+            return false;
         }
 
-        $dom = new DOMDocument();
-        $dom->loadXML($xml);
-        $strings = $dom->getElementsByTagName('si');
+        // Verificar firma ZIP
+        if (substr($fileContent, 0, 4) !== "PK\x03\x04") {
+            return false;
+        }
 
-        foreach ($strings as $string) {
-            $t = $string->getElementsByTagName('t')->item(0);
-            if ($t) {
-                $this->strings[] = $t->nodeValue;
+        error_log("XLSX DataDesc: Iniciando extracción con soporte para data descriptors");
+
+        // Buscar archivos específicos con manejo de data descriptors
+        $worksheetXML = $this->extractFileWithDataDescriptor($fileContent, 'xl/worksheets/sheet1.xml');
+        $sharedStringsXML = $this->extractFileWithDataDescriptor($fileContent, 'xl/sharedStrings.xml');
+
+        if (!$worksheetXML) {
+            error_log("XLSX DataDesc: No se pudo extraer worksheet XML");
+            return false;
+        }
+
+        error_log("XLSX DataDesc: Worksheet XML extraído exitosamente, longitud: " . strlen($worksheetXML));
+
+        // Procesar shared strings si existe
+        if ($sharedStringsXML) {
+            error_log("XLSX DataDesc: Shared strings encontrado, longitud: " . strlen($sharedStringsXML));
+            $this->parseSharedStrings($sharedStringsXML);
+        } else {
+            error_log("XLSX DataDesc: No hay shared strings, usando valores inline");
+        }
+
+        // Procesar worksheet
+        $this->parseWorksheet($worksheetXML);
+
+        return true;
+    }
+
+    private function extractFileWithDataDescriptor($zipContent, $filename)
+    {
+        $contentLength = strlen($zipContent);
+        $pos = 0;
+
+        // Buscar todas las firmas de archivos locales
+        while (($pos = strpos($zipContent, "PK\x03\x04", $pos)) !== false) {
+
+            if ($pos + 30 > $contentLength) {
+                break;
+            }
+
+            // Leer header local (30 bytes)
+            $header = substr($zipContent, $pos, 30);
+            $headerData = unpack('Vsig/vver/vflag/vmethod/vtime/vdate/Vcrc/Vcompsize/Vuncompsize/vnamelen/vextralen', $header);
+
+            $nameLen = $headerData['namelen'];
+            $extraLen = $headerData['extralen'];
+            $compSize = $headerData['compsize'];
+            $uncompSize = $headerData['uncompsize'];
+            $method = $headerData['method'];
+            $flags = $headerData['flag'];
+
+            if ($pos + 30 + $nameLen > $contentLength) {
+                $pos++;
+                continue;
+            }
+
+            // Leer nombre del archivo
+            $currentFilename = substr($zipContent, $pos + 30, $nameLen);
+
+            // Si es el archivo que buscamos
+            if ($currentFilename === $filename) {
+                error_log("XLSX DataDesc: Encontrado archivo '$filename' en posición $pos");
+
+                $dataPos = $pos + 30 + $nameLen + $extraLen;
+
+                // Verificar si usa data descriptor (bit 3 de flags)
+                $hasDataDescriptor = ($flags & 0x08) !== 0;
+
+                if ($hasDataDescriptor) {
+                    error_log("XLSX DataDesc: Archivo '$filename' usa data descriptor");
+
+                    // Buscar el data descriptor después de los datos
+                    $descriptorPos = $this->findDataDescriptor($zipContent, $dataPos);
+
+                    if ($descriptorPos === false) {
+                        error_log("XLSX DataDesc: No se encontró data descriptor para '$filename'");
+                        $pos++;
+                        continue;
+                    }
+
+                    // Leer tamaños del data descriptor
+                    $descriptor = substr($zipContent, $descriptorPos, 16);
+                    $descData = unpack('Vsig/Vcrc/Vcompsize/Vuncompsize', $descriptor);
+
+                    $compSize = $descData['compsize'];
+                    $uncompSize = $descData['uncompsize'];
+
+                    error_log("XLSX DataDesc: Tamaños del data descriptor - Comprimido: $compSize, Descomprimido: $uncompSize");
+                } else {
+                    error_log("XLSX DataDesc: Archivo '$filename' usa tamaños del header");
+                }
+
+                if ($dataPos + $compSize > $contentLength) {
+                    error_log("XLSX DataDesc: Datos del archivo fuera de rango");
+                    $pos++;
+                    continue;
+                }
+
+                $compressedData = substr($zipContent, $dataPos, $compSize);
+
+                // Descomprimir si es necesario
+                if ($method == 8) { // Deflate
+                    $data = @gzinflate($compressedData);
+                    if ($data === false) {
+                        error_log("XLSX DataDesc: Error al descomprimir archivo '$filename'");
+                        $pos++;
+                        continue;
+                    }
+                } else {
+                    $data = $compressedData;
+                }
+
+                error_log("XLSX DataDesc: Archivo '$filename' extraído exitosamente, tamaño descomprimido: " . strlen($data));
+                return $data;
+            }
+
+            $pos++;
+        }
+
+        return false;
+    }
+
+    private function findDataDescriptor($zipContent, $startPos)
+    {
+        $contentLength = strlen($zipContent);
+
+        // Buscar signature del data descriptor PK\x07\x08 después de startPos
+        for ($i = $startPos; $i < $contentLength - 4; $i++) {
+            if (substr($zipContent, $i, 4) === "PK\x07\x08") {
+                return $i;
             }
         }
+
+        return false;
     }
 
-    public function getWorksheetData($worksheetIndex = 0)
+    private function parseSharedStrings($xml)
     {
-        $worksheetXML = $this->zip->getFromName('xl/worksheets/sheet' . ($worksheetIndex + 1) . '.xml');
-        if ($worksheetXML === false) {
-            throw new Exception('No se pudo leer la hoja de cálculo');
+        if (preg_match_all('/<si[^>]*>.*?<t[^>]*>(.*?)<\/t>.*?<\/si>/s', $xml, $matches)) {
+            foreach ($matches[1] as $string) {
+                $this->strings[] = html_entity_decode($string, ENT_XML1, 'UTF-8');
+            }
+        }
+        error_log("XLSX DataDesc: Procesados " . count($this->strings) . " shared strings");
+    }
+
+    private function parseWorksheet($xml)
+    {
+        error_log("XLSX DataDesc: Iniciando parsing de worksheet, longitud XML: " . strlen($xml));
+
+        // Primer paso: extraer todas las celdas con un regex muy amplio
+        $allCellsPattern = '/<c[^>]*r="([A-Z]+)(\d+)"[^>]*>(.*?)<\/c>/s';
+
+        if (!preg_match_all($allCellsPattern, $xml, $allMatches, PREG_SET_ORDER)) {
+            throw new Exception('No se encontraron celdas en la hoja de trabajo');
         }
 
-        $dom = new DOMDocument();
-        $dom->loadXML($worksheetXML);
+        error_log("XLSX DataDesc: Encontradas " . count($allMatches) . " celdas en total");
 
-        $rows = [];
-        $cellElements = $dom->getElementsByTagName('c');
+        $cells = [];
 
-        // Agrupar celdas por fila
-        $cellsByRow = [];
-        foreach ($cellElements as $cell) {
-            $cellRef = $cell->getAttribute('r');
-            preg_match('/([A-Z]+)(\d+)/', $cellRef, $matches);
-            $row = (int)$matches[2] - 1; // Convertir a índice 0
-            $col = $this->columnToIndex($matches[1]);
+        foreach ($allMatches as $match) {
+            $column = $match[1];
+            $row = (int)$match[2] - 1; // Convertir a índice 0
+            $colIndex = $this->columnToIndex($column);
+            $cellContent = $match[3];
 
-            $cellType = $cell->getAttribute('t');
             $value = '';
 
-            $valueNode = $cell->getElementsByTagName('v')->item(0);
-            if ($valueNode) {
-                $value = $valueNode->nodeValue;
+            // Múltiples estrategias para extraer el valor de la celda
 
-                // Si es un string compartido
-                if ($cellType == 's' && isset($this->strings[(int)$value])) {
-                    $value = $this->strings[(int)$value];
+            // 1. Buscar valor directo en <v>
+            if (preg_match('/<v[^>]*>(.*?)<\/v>/', $cellContent, $vMatch)) {
+                $rawValue = $vMatch[1];
+
+                // Verificar si es un shared string (buscar atributo t="s")
+                if (preg_match('/t="s"/', $cellContent)) {
+                    $stringIndex = (int)$rawValue;
+                    if (isset($this->strings[$stringIndex])) {
+                        $value = $this->strings[$stringIndex];
+                        error_log("XLSX DataDesc: Celda $column$row usa shared string [$stringIndex]: '$value'");
+                    } else {
+                        error_log("XLSX DataDesc: WARNING - Shared string [$stringIndex] no encontrado para celda $column$row");
+                        $value = $rawValue;
+                    }
+                } else {
+                    // Valor directo (número, fecha, etc.)
+                    $value = $rawValue;
                 }
             }
-
-            if (!isset($cellsByRow[$row])) {
-                $cellsByRow[$row] = [];
+            // 2. Buscar inline string en <is><t>
+            else if (preg_match('/<is[^>]*>.*?<t[^>]*>(.*?)<\/t>.*?<\/is>/', $cellContent, $isMatch)) {
+                $value = html_entity_decode($isMatch[1], ENT_XML1, 'UTF-8');
+                error_log("XLSX DataDesc: Celda $column$row usa inline string: '$value'");
             }
-            $cellsByRow[$row][$col] = $value;
+            // 3. Buscar string directo en <t>
+            else if (preg_match('/<t[^>]*>(.*?)<\/t>/', $cellContent, $tMatch)) {
+                $value = html_entity_decode($tMatch[1], ENT_XML1, 'UTF-8');
+                error_log("XLSX DataDesc: Celda $column$row usa string directo: '$value'");
+            }
+            // 4. Celda vacía o sin valor
+            else {
+                $value = '';
+            }
+
+            if (!empty($value) || $row == 16) { // Log especial para fila de headers
+                error_log("XLSX DataDesc: Celda $column" . ($row + 1) . " (índice $row,$colIndex) = '$value'");
+            }
+
+            $cells["$row-$colIndex"] = $value;
         }
 
         // Convertir a array estructurado
-        foreach ($cellsByRow as $rowIndex => $rowData) {
-            $maxCol = max(array_keys($rowData));
-            $row = [];
-            for ($i = 0; $i <= $maxCol; $i++) {
-                $row[] = isset($rowData[$i]) ? $rowData[$i] : '';
-            }
-            $rows[] = $row;
+        $maxRow = 0;
+        $maxCol = 0;
+
+        foreach ($cells as $key => $value) {
+            list($row, $col) = explode('-', $key);
+            $maxRow = max($maxRow, (int)$row);
+            $maxCol = max($maxCol, (int)$col);
         }
 
-        return $rows;
+        for ($row = 0; $row <= $maxRow; $row++) {
+            $rowData = [];
+            for ($col = 0; $col <= $maxCol; $col++) {
+                $key = "$row-$col";
+                $rowData[] = isset($cells[$key]) ? $cells[$key] : '';
+            }
+            $this->worksheetData[] = $rowData;
+        }
+
+        error_log("XLSX DataDesc: Procesadas " . count($this->worksheetData) . " filas, " . ($maxCol + 1) . " columnas máximo");
+
+        // Log especial para la fila de headers (fila 17, índice 16)
+        if (isset($this->worksheetData[16])) {
+            error_log("XLSX DataDesc: Headers en fila 17: " . print_r($this->worksheetData[16], true));
+        }
     }
 
     private function columnToIndex($column)
@@ -175,18 +331,14 @@ class SimpleXLSXReader
         for ($i = 0; $i < $length; $i++) {
             $index = $index * 26 + (ord($column[$i]) - ord('A') + 1);
         }
-        return $index - 1; // Convertir a índice 0
+        return $index - 1;
     }
 
-    public function close()
+    public function getWorksheetData()
     {
-        if ($this->zip) {
-            $this->zip->close();
-        }
+        return $this->worksheetData;
     }
 }
-
-// session_start() ya está incluido en db.php
 
 $message = '';
 $messageType = '';
@@ -224,51 +376,141 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         mysqli_set_charset($conn2, 'utf8');
 
-                        // Crear instancia del lector XLSX
-                        $xlsxReader = new SimpleXLSXReader($file['tmp_name']);
-                        $worksheetData = $xlsxReader->getWorksheetData(0); // Primera hoja
-                        $xlsxReader->close();
+                        // Crear instancia del lector XLSX con data descriptors y mapeo
+                        error_log("XLSX DataDesc: Iniciando procesamiento con data descriptors y mapeo de campos");
+                        $xlsxReader = new DataDescriptorXLSXReader($file['tmp_name']);
+                        $worksheetData = $xlsxReader->getWorksheetData();
 
                         if (empty($worksheetData)) {
                             throw new Exception('El archivo XLSX está vacío o no se pudo leer');
                         }
 
-                        // LIMPIEZA DE DATOS DEL XLSX:
-                        // - Omitir las primeras 16 filas (basura)
-                        // - Fila 17 (índice 16) son los encabezados
-                        // - Omitir las últimas 33 filas (basura)
-
+                        // ANÁLISIS DEL ARCHIVO
                         $totalRows = count($worksheetData);
-                        $dataStartRow = 17; // Fila 18 en Excel (índice 17 en array)
-                        $trashRowsAtEnd = 33;
-                        $dataEndRow = $totalRows - $trashRowsAtEnd - 1; // Calcular dónde terminan los datos válidos
+                        $firstRowColumns = isset($worksheetData[0]) ? count($worksheetData[0]) : 0;
 
-                        // Validar que tenemos suficientes filas para procesar
+                        error_log("XLSX DataDesc - Total filas: $totalRows, Columnas primera fila: $firstRowColumns");
+
+                        // LÓGICA DE LIMPIEZA (igual que antes)
+                        $headerRowIndex = 16; // Fila 17 en Excel (índice 16)
+                        $dataStartRow = 17;   // Fila 18 en Excel (índice 17)
+                        $trashRowsAtEnd = 33; // Últimas 33 filas (basura/comentarios)
+
+                        // Verificar que el archivo tenga la estructura mínima esperada
+                        if ($totalRows <= $headerRowIndex) {
+                            throw new Exception("El archivo tiene muy pocas filas. Se necesitan al menos " . ($headerRowIndex + 1) . " filas, pero solo hay $totalRows");
+                        }
+
                         if ($totalRows < ($dataStartRow + $trashRowsAtEnd + 1)) {
                             throw new Exception("El archivo tiene muy pocas filas. Total: $totalRows, se necesitan al menos " . ($dataStartRow + $trashRowsAtEnd + 1));
                         }
 
-                        // Extraer solo las filas de datos válidos
+                        // Obtener encabezados para mapeo
+                        $headers = isset($worksheetData[$headerRowIndex]) ? $worksheetData[$headerRowIndex] : [];
+                        $headerCount = count($headers);
+
+                        error_log("XLSX Headers - Encontrados: $headerCount encabezados");
+                        error_log("XLSX Headers - Todos los encabezados: " . print_r($headers, true));
+
+                        // MAPEO DE CAMPOS XLSX -> BASE DE DATOS (mejorado y robusto)
+                        $fieldMapping = [
+                            'Credit #' => 'CreditNum',
+                            'Credit Date' => 'CreditDate',
+                            'Approved On' => 'ApprovedOn',
+                            'Approved By' => 'ApprovedBy',
+                            'Order #' => 'OrderNum',
+                            'Location' => 'Location',
+                            'Main Location' => 'MainLocation',
+                            'Customer' => 'Customer',
+                            'Customer Code' => 'CustomerCode',
+                            'Order Date' => 'OrderDate',
+                            'Sales Person' => 'SalesPerson',
+                            'Status' => 'Status',
+                            'Type' => 'Type',
+                            'Description' => 'Description',
+                            'Accounting Code' => 'AccountingCode',
+                            'Vendor' => 'Vendor',
+                            'Vendor Code' => 'VendorCode',
+                            'Boxes' => 'Boxes',
+                            'Box Type' => 'BoxType',
+                            'Unit Type' => 'UnitType',
+                            'Total Units' => 'TotalUnits',
+                            'AWB' => 'AWB',
+                            'Aging' => 'Aging',
+                            'Amount' => 'Amount',
+                            'Credits Units' => 'CreditsUnits',
+                            'Credits' => 'Credits',
+                            'Credit Freight' => 'CreditFreight',
+                            'Total Credits' => 'TotalCredits',
+                            'Credit Reason' => 'CreditReason',
+                            'Tax Percent' => 'TaxPercent',
+                            'Unit Cost' => 'UnitCost'
+                        ];
+
+                        // Crear mapeo de índices de columnas (más robusto)
+                        $columnIndexes = [];
+                        foreach ($headers as $index => $header) {
+                            // Limpiar header de espacios, saltos de línea y caracteres especiales
+                            $cleanHeader = trim(str_replace(["\r", "\n", "\t"], '', $header));
+
+                            // Log para debugging
+                            error_log("XLSX Header $index: '" . $cleanHeader . "' (longitud: " . strlen($cleanHeader) . ")");
+
+                            if (isset($fieldMapping[$cleanHeader])) {
+                                $dbField = $fieldMapping[$cleanHeader];
+                                $columnIndexes[$dbField] = $index;
+                                error_log("XLSX Mapeo exitoso: '$cleanHeader' (índice $index) -> '$dbField'");
+                            } else {
+                                error_log("XLSX Header no mapeado: '$cleanHeader'");
+                            }
+                        }
+
+                        // Log del mapeo completo para debugging
+                        error_log("XLSX Columnas mapeadas: " . print_r($columnIndexes, true));
+
+                        // Verificar campos requeridos
+                        $requiredFields = ['CreditNum', 'Customer', 'Amount'];
+                        $missingFields = [];
+                        foreach ($requiredFields as $field) {
+                            if (!isset($columnIndexes[$field])) {
+                                $missingFields[] = $field;
+                                error_log("XLSX Campo requerido faltante: $field");
+                            } else {
+                                error_log("XLSX Campo requerido encontrado: $field en índice " . $columnIndexes[$field]);
+                            }
+                        }
+
+                        if (!empty($missingFields)) {
+                            $availableHeaders = array_keys($fieldMapping);
+                            throw new Exception("Campos requeridos no encontrados en el archivo: " . implode(', ', $missingFields) .
+                                ". Headers disponibles en el archivo: " . implode(', ', array_slice($headers, 0, 10)));
+                        }
+
+                        error_log("XLSX Mapeo completado exitosamente - " . count($columnIndexes) . " campos mapeados");
+
+                        // Calcular rango de datos válidos (MANTENER lógica original)
+                        $dataEndRow = $totalRows - $trashRowsAtEnd - 1;
+
+                        if ($dataEndRow < $dataStartRow) {
+                            throw new Exception("No hay suficientes filas de datos después de omitir basura al inicio y final");
+                        }
+
                         $validDataRows = array_slice($worksheetData, $dataStartRow, $dataEndRow - $dataStartRow + 1);
+
+                        error_log("XLSX Procesamiento - Filas de datos válidas: " . count($validDataRows) . " (desde fila " . ($dataStartRow + 1) . " hasta fila " . ($dataEndRow + 1) . ") - Últimas 33 filas omitidas (basura/comentarios)");
 
                         if (empty($validDataRows)) {
                             throw new Exception('No se encontraron filas de datos válidas después de la limpieza');
                         }
 
-                        // Obtener encabezados desde la fila 17 (índice 16) para referencia
-                        $headers = isset($worksheetData[16]) ? $worksheetData[16] : [];
-
-                        // Log de información de limpieza
-                        error_log("XLSX Limpieza - Total filas: $totalRows, Filas válidas: " . count($validDataRows) . " (desde fila " . ($dataStartRow + 1) . " hasta fila " . ($dataEndRow + 1) . ")");
-
-                        // Preparar la consulta de inserción para credits (31 columnas)
+                        // Preparar la consulta de inserción para credits (31 columnas en BD)
                         $insertQuery = "INSERT INTO credits (
                             CreditNum, CreditDate, ApprovedOn, ApprovedBy, OrderNum, Location, MainLocation,
                             Customer, CustomerCode, OrderDate, SalesPerson, Status, Type, Description,
                             AccountingCode, Vendor, VendorCode, Boxes, BoxType, UnitType, TotalUnits,
                             AWB, Aging, Amount, CreditsUnits, Credits, CreditFreight, TotalCredits,
                             CreditReason, TaxPercent, UnitCost
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        ) VALUES (" . str_repeat('?,', DATABASE_COLUMNS - 1) . "?)";
 
                         $stmt = $conn2->prepare($insertQuery);
 
@@ -276,7 +518,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             throw new Exception('Error preparando la consulta: ' . $conn2->error);
                         }
 
-                        $lineNumber = $dataStartRow; // Empezar el contador desde la fila real de Excel
+                        $lineNumber = $dataStartRow; // Empezar el contador desde la fila real
                         $insertedRows = 0;
                         $errors = [];
 
@@ -296,40 +538,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 continue; // Saltar filas completamente vacías
                             }
 
-                            // Verificar que tenemos el número correcto de columnas (31 columnas esperadas)
-                            if (count($rowData) < 31) {
-                                // Rellenar con valores vacíos si faltan columnas
-                                while (count($rowData) < 31) {
-                                    $rowData[] = '';
+                            // MAPEAR DATOS USANDO LOS ÍNDICES DE COLUMNAS
+                            $mappedData = [];
+
+                            // Orden de campos para la base de datos (31 campos)
+                            $dbFields = [
+                                'CreditNum',
+                                'CreditDate',
+                                'ApprovedOn',
+                                'ApprovedBy',
+                                'OrderNum',
+                                'Location',
+                                'MainLocation',
+                                'Customer',
+                                'CustomerCode',
+                                'OrderDate',
+                                'SalesPerson',
+                                'Status',
+                                'Type',
+                                'Description',
+                                'AccountingCode',
+                                'Vendor',
+                                'VendorCode',
+                                'Boxes',
+                                'BoxType',
+                                'UnitType',
+                                'TotalUnits',
+                                'AWB',
+                                'Aging',
+                                'Amount',
+                                'CreditsUnits',
+                                'Credits',
+                                'CreditFreight',
+                                'TotalCredits',
+                                'CreditReason',
+                                'TaxPercent',
+                                'UnitCost'
+                            ];
+
+                            foreach ($dbFields as $dbField) {
+                                if (isset($columnIndexes[$dbField]) && isset($rowData[$columnIndexes[$dbField]])) {
+                                    $value = trim($rowData[$columnIndexes[$dbField]]);
+                                    $mappedData[] = $value;
+                                } else {
+                                    $mappedData[] = ''; // Campo no encontrado o vacío
                                 }
-                            } elseif (count($rowData) > 31) {
-                                // Truncar si hay más columnas de las esperadas
-                                $rowData = array_slice($rowData, 0, 31);
                             }
 
-                            // Sanitizar y procesar los datos
-                            $cleanData = array_map('sanitizeData', $rowData);
+                            // Sanitizar y procesar los datos mapeados
+                            $cleanData = array_map('sanitizeData', $mappedData);
 
-                            // Convertir fechas específicas para credits (mismo orden que salesuploader.php)
-                            $cleanData[1] = convertCreditDate($cleanData[1]); // CreditDate (índice 1)
-                            $cleanData[2] = convertCreditDate($cleanData[2]); // ApprovedOn (índice 2)
-                            $cleanData[9] = convertCreditDate($cleanData[9]); // OrderDate (índice 9)
+                            // Convertir fechas específicas usando nombres de campos
+                            $creditDateIndex = array_search('CreditDate', $dbFields);
+                            $approvedOnIndex = array_search('ApprovedOn', $dbFields);
+                            $orderDateIndex = array_search('OrderDate', $dbFields);
 
-                            // Convertir valores numéricos y manejar valores vacíos (igual que salesuploader.php)
+                            if ($creditDateIndex !== false) {
+                                $cleanData[$creditDateIndex] = convertCreditDate($cleanData[$creditDateIndex]);
+                            }
+                            if ($approvedOnIndex !== false) {
+                                $cleanData[$approvedOnIndex] = convertCreditDate($cleanData[$approvedOnIndex]);
+                            }
+                            if ($orderDateIndex !== false) {
+                                $cleanData[$orderDateIndex] = convertCreditDate($cleanData[$orderDateIndex]);
+                            }
+
+                            // Convertir valores numéricos y manejar valores vacíos
                             for ($i = 0; $i < count($cleanData); $i++) {
                                 if ($cleanData[$i] === '' || $cleanData[$i] === null) {
                                     $cleanData[$i] = null;
                                 }
                             }
 
-                            // Validar que al menos tenemos CreditNum (campo requerido)
-                            if (empty($cleanData[0])) {
+                            // Validar que al menos tenemos CreditNum (usando mapeo)
+                            $creditNumIndex = array_search('CreditNum', $dbFields);
+                            if ($creditNumIndex === false || empty($cleanData[$creditNumIndex])) {
                                 $errors[] = "Fila Excel $lineNumber: CreditNum es requerido";
                                 continue;
                             }
 
-                            // Bind parameters - usar 31 parámetros tipo 's'
-                            $stmt->bind_param(str_repeat('s', 31), ...array_values($cleanData));
+                            // Bind parameters
+                            $stmt->bind_param(str_repeat('s', DATABASE_COLUMNS), ...array_values($cleanData));
 
                             if ($stmt->execute()) {
                                 $insertedRows++;
@@ -352,7 +641,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $messageType = 'danger';
                         }
 
-                        // Mostrar errores si los hay (solo los primeros 10) - igual que salesuploader.php
+                        // Mostrar errores si los hay (solo los primeros 10)
                         if (!empty($errors)) {
                             $message .= "<br><br><strong>Errores encontrados:</strong><br>";
                             $message .= implode("<br>", array_slice($errors, 0, 10));
@@ -363,6 +652,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (Exception $e) {
                         $message = 'Error: ' . $e->getMessage();
                         $messageType = 'danger';
+                        error_log("XLSX DataDesc Error: " . $e->getMessage());
                     }
                 }
             }
@@ -395,50 +685,76 @@ include("includes/header.php");
                     <div class="card-header bg-success text-white">
                         <h3 class="card-title mb-0">
                             <i class="fas fa-file-excel me-2"></i>
-                            Subir Archivo XLSX - Puawai Credits Data
+                            Subir Archivo XLSX - Puawai Credits Data (Con Mapeo de Campos)
                         </h3>
                     </div>
                     <div class="card-body">
-                        <!-- Instrucciones -->
+                        <!-- Alerta sobre data descriptors y mapeo -->
+                        <div class="alert alert-success">
+                            <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Problema Resuelto - Data Descriptors + Mapeo de Campos:</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul class="mb-0 small">
+                                        <li>✅ <strong>Data descriptors:</strong> Soporte para flags 0x0808</li>
+                                        <li>✅ <strong>Mapeo automático:</strong> "Credit #" → "CreditNum"</li>
+                                        <li>✅ <strong>31 campos mapeados:</strong> XLSX → Base de datos</li>
+                                        <li>✅ <strong>Validación completa:</strong> Verifica campos requeridos</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="mb-0 small">
+                                        <li>✅ <strong>Tu archivo específico:</strong> Optimizado para tu estructura</li>
+                                        <li>✅ <strong>Logs detallados:</strong> Muestra mapeo de cada campo</li>
+                                        <li>✅ <strong>Sin dependencias:</strong> Solo PHP básico</li>
+                                        <li>✅ <strong>Robusto:</strong> Maneja nombres de columnas diferentes</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mapeo de campos -->
                         <div class="alert alert-info">
-                            <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Instrucciones:</h6>
+                            <h6 class="alert-heading"><i class="fas fa-exchange-alt me-2"></i>Mapeo Automático de Campos:</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Ejemplos de mapeo XLSX → BD:</strong>
+                                    <ul class="mb-0 small">
+                                        <li><code>"Credit #"</code> → <code>CreditNum</code></li>
+                                        <li><code>"Credit Date"</code> → <code>CreditDate</code></li>
+                                        <li><code>"Order #"</code> → <code>OrderNum</code></li>
+                                        <li><code>"Sales Person"</code> → <code>SalesPerson</code></li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Campos requeridos:</strong>
+                                    <ul class="mb-0 small">
+                                        <li><code>Credit #</code> (requerido)</li>
+                                        <li><code>Customer</code> (requerido)</li>
+                                        <li><code>Amount</code> (requerido)</li>
+                                        <li>28 campos adicionales (opcionales)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Instrucciones -->
+                        <div class="alert alert-warning">
+                            <h6 class="alert-heading"><i class="fas fa-upload me-2"></i>Instrucciones:</h6>
                             <ul class="mb-0">
-                                <li>Selecciona un archivo XLSX con los datos de créditos de Puawai</li>
-                                <li>El archivo debe tener exactamente <strong>31 columnas</strong> en la primera hoja
-                                </li>
+                                <li>Selecciona tu archivo XLSX directamente del sistema</li>
+                                <li><strong>Mapeo automático:</strong> Los nombres de columnas se mapean automáticamente (ej: "Credit #" → CreditNum)</li>
+                                <li><strong>Campos requeridos:</strong> Credit #, Customer, Amount deben estar presentes</li>
                                 <li><strong>Limpieza automática:</strong> Se omiten las primeras 16 filas (basura)</li>
-                                <li><strong>Encabezados:</strong> La fila 17 se toma como encabezados de referencia</li>
-                                <li><strong>Datos:</strong> Se procesan desde la fila 18 hasta las últimas 33 filas (que
-                                    se omiten)</li>
-                                <li>El sistema procesará automáticamente solo la <strong>primera hoja</strong> del
-                                    archivo</li>
+                                <li><strong>Encabezados:</strong> La fila 17 se lee para mapear nombres de columnas</li>
+                                <li><strong>Datos:</strong> Se procesan desde la fila 18 hasta las últimas 33 filas (que se omiten porque contienen comentarios)</li>
                                 <li>Tamaño máximo: 10MB</li>
-                                <li>Formatos de fecha soportados: Fechas de Excel, m/d/Y o n/j/Y</li>
+                                <li><strong>Compatible:</strong> Con archivos XLSX que usan data descriptors y nombres de columnas diferentes</li>
                             </ul>
                         </div>
 
-                        <!-- Verificación de funciones PHP -->
-                        <?php
-                        $phpCheck = checkPHPExtensions();
-                        if (!empty($phpCheck['missing'])): ?>
-                        <div class="alert alert-danger">
-                            <h6 class="alert-heading"><i class="fas fa-times-circle me-2"></i>Error del Servidor:</h6>
-                            <p><strong>Funciones PHP faltantes:</strong> <?= implode(', ', $phpCheck['missing']) ?></p>
-                            <p class="mb-0">Contacte al administrador del hosting para resolver este problema.</p>
-                        </div>
-                        <?php else: ?>
-                        <div class="alert alert-success">
-                            <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Procesador XLSX Nativo:
-                            </h6>
-                            <p class="mb-0">Sistema listo para procesar archivos XLSX usando implementación PHP pura
-                                (sin dependencias externas).</p>
-                        </div>
-                        <?php endif; ?>
-
                         <!-- Proceso de limpieza -->
-                        <div class="alert alert-warning">
-                            <h6 class="alert-heading"><i class="fas fa-broom me-2"></i>Proceso de Limpieza Automática:
-                            </h6>
+                        <div class="alert alert-secondary">
+                            <h6 class="alert-heading"><i class="fas fa-broom me-2"></i>Proceso de Limpieza Automática:</h6>
                             <div class="row">
                                 <div class="col-md-4">
                                     <strong>Filas 1-16:</strong><br>
@@ -450,61 +766,20 @@ include("includes/header.php");
                                 </div>
                                 <div class="col-md-4">
                                     <strong>Últimas 33 filas:</strong><br>
-                                    <span class="text-danger">❌ Omitidas (basura)</span>
+                                    <span class="text-danger">❌ Omitidas (comentarios)</span>
                                 </div>
                             </div>
                             <hr>
-                            <small><strong>Solo se procesan las filas de datos válidas:</strong> Desde fila 18 hasta
-                                (total - 33)</small>
-                        </div>
-
-                        <!-- Estructura de columnas esperada -->
-                        <div class="alert alert-secondary">
-                            <h6 class="alert-heading"><i class="fas fa-table me-2"></i>Estructura esperada del XLSX (31
-                                columnas):</h6>
-                            <small class="text-muted">
-                                <strong>A:</strong> CreditNum, <strong>B:</strong> CreditDate, <strong>C:</strong>
-                                ApprovedOn, <strong>D:</strong> ApprovedBy, <strong>E:</strong> OrderNum,
-                                <strong>F:</strong> Location, <strong>G:</strong> MainLocation, <strong>H:</strong>
-                                Customer, <strong>I:</strong> CustomerCode, <strong>J:</strong> OrderDate,
-                                <strong>K:</strong> SalesPerson, <strong>L:</strong> Status, <strong>M:</strong> Type,
-                                <strong>N:</strong> Description, <strong>O:</strong> AccountingCode,
-                                <strong>P:</strong> Vendor, <strong>Q:</strong> VendorCode, <strong>R:</strong> Boxes,
-                                <strong>S:</strong> BoxType, <strong>T:</strong> UnitType,
-                                <strong>U:</strong> TotalUnits, <strong>V:</strong> AWB, <strong>W:</strong> Aging,
-                                <strong>X:</strong> Amount, <strong>Y:</strong> CreditsUnits,
-                                <strong>Z:</strong> Credits, <strong>AA:</strong> CreditFreight, <strong>AB:</strong>
-                                TotalCredits, <strong>AC:</strong> CreditReason,
-                                <strong>AD:</strong> TaxPercent, <strong>AE:</strong> UnitCost
-                            </small>
-                        </div>
-
-                        <!-- Nuevas características XLSX -->
-                        <div class="alert alert-success">
-                            <h6 class="alert-heading"><i class="fas fa-magic me-2"></i>Características del Procesador
-                                XLSX:</h6>
-                            <ul class="mb-0">
-                                <li><strong>Limpieza inteligente:</strong> Automáticamente elimina filas de basura al
-                                    inicio y final</li>
-                                <li><strong>Conversión automática:</strong> Fechas de Excel se convierten
-                                    automáticamente</li>
-                                <li><strong>Tolerancia de columnas:</strong> Ajuste automático si faltan o sobran
-                                    columnas</li>
-                                <li><strong>Detección de filas vacías:</strong> Omite automáticamente filas sin datos
-                                </li>
-                                <li><strong>Validación de estructura:</strong> Verifica que el archivo tenga suficientes
-                                    filas</li>
-                                <li><strong>Sin dependencias:</strong> Procesamiento nativo PHP sin librerías externas
-                                </li>
-                            </ul>
+                            <small><strong>Solo se procesan las filas de datos válidas:</strong> Desde fila 18 hasta (total - 33)<br>
+                                <strong>Importante:</strong> Las últimas 33 filas contienen 1 fila en blanco + 32 filas de comentarios que NO deben procesarse</small>
                         </div>
 
                         <!-- Mensajes de resultado -->
                         <?php if ($message): ?>
-                        <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-                            <?php echo $message; ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
+                            <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+                                <?php echo $message; ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
                         <?php endif; ?>
 
                         <!-- Formulario de subida -->
@@ -519,21 +794,21 @@ include("includes/header.php");
                                     accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                                     required>
                                 <div class="form-text">
-                                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
-                                    Archivo XLSX requerido (máximo 10MB) - Solo primera hoja, 31 columnas
+                                    <i class="fas fa-magic text-success me-1"></i>
+                                    Archivo XLSX con mapeo automático de campos (máximo 10MB) - Problema resuelto
                                 </div>
                             </div>
 
                             <!-- Barra de progreso -->
                             <div class="progress mb-3" id="progressContainer" style="display: none;">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
                                     id="progressBar" role="progressbar" style="width: 0%"></div>
                             </div>
 
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-warning btn-lg text-dark" id="submitBtn">
+                                <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
                                     <i class="fas fa-file-excel me-2"></i>
-                                    Procesar Archivo XLSX de Créditos
+                                    Procesar Archivo XLSX (Con Mapeo de Campos)
                                 </button>
                             </div>
                         </form>
@@ -544,26 +819,31 @@ include("includes/header.php");
                 <div class="card mt-3">
                     <div class="card-body">
                         <h6 class="card-title">
-                            <i class="fas fa-cogs me-2 text-warning"></i>Información Técnica del Procesador XLSX
+                            <i class="fas fa-cogs me-2 text-success"></i>Soporte Técnico: Data Descriptors + Mapeo de Campos
                         </h6>
                         <div class="row">
                             <div class="col-md-6">
                                 <ul class="mb-0 small">
-                                    <li><strong>Arquitectura:</strong> ZIP + XML parsing nativo</li>
-                                    <li><strong>Strings compartidos:</strong> Soporte completo</li>
-                                    <li><strong>Fechas Excel:</strong> Conversión automática desde 1900</li>
-                                    <li><strong>Memoria:</strong> Procesamiento eficiente por filas</li>
+                                    <li><strong>Mapeo automático:</strong> XLSX headers → DB fields</li>
+                                    <li><strong>Data descriptors:</strong> Lee flags 0x08 para tamaños</li>
+                                    <li><strong>Validación de campos:</strong> Verifica campos requeridos</li>
+                                    <li><strong>Búsqueda de descriptors:</strong> Encuentra PK\x07\x08</li>
                                 </ul>
                             </div>
                             <div class="col-md-6">
                                 <ul class="mb-0 small">
-                                    <li><strong>Validación:</strong> Estructura y tipos de dato</li>
-                                    <li><strong>Errores:</strong> Reporte detallado por línea</li>
-                                    <li><strong>Seguridad:</strong> Sanitización completa de datos</li>
-                                    <li><strong>Base de datos:</strong> Prepared statements MySQL</li>
+                                    <li><strong>31 campos mapeados:</strong> Convierte nombres automáticamente</li>
+                                    <li><strong>Logs de mapeo:</strong> Muestra cada conversión</li>
+                                    <li><strong>Fallback robusto:</strong> Maneja campos faltantes</li>
+                                    <li><strong>Compatible:</strong> Con diferentes nombres de columnas</li>
                                 </ul>
                             </div>
                         </div>
+                        <hr>
+                        <small class="text-muted">
+                            <strong>Mapeo de Campos:</strong> Esta versión lee automáticamente los encabezados de la fila 17 y los mapea
+                            a los nombres de la base de datos (ej: "Credit #" → "CreditNum"), resolviendo las diferencias de nomenclatura.
+                        </small>
                     </div>
                 </div>
             </div>
@@ -572,69 +852,60 @@ include("includes/header.php");
 </div>
 
 <script>
-// Proteger la página
-document.addEventListener('DOMContentLoaded', function() {
-    protectPage();
-});
+    // Proteger la página
+    document.addEventListener('DOMContentLoaded', function() {
+        protectPage();
+    });
 
-// Manejo del formulario de upload
-document.getElementById('uploadForm').addEventListener('submit', function() {
-    const submitBtn = document.getElementById('submitBtn');
-    const progressContainer = document.getElementById('progressContainer');
+    // Manejo del formulario de upload
+    document.getElementById('uploadForm').addEventListener('submit', function() {
+        const submitBtn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
 
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando XLSX de Créditos...';
-    progressContainer.style.display = 'block';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando XLSX con Mapeo de Campos...';
+        progressContainer.style.display = 'block';
 
-    // Simular progreso más lento para XLSX
-    let progress = 0;
-    const interval = setInterval(function() {
-        progress += Math.random() * 10; // Más lento que CSV
-        if (progress > 85) progress = 85;
-        document.getElementById('progressBar').style.width = progress + '%';
-    }, 300);
+        // Progreso optimista para la versión con mapeo
+        let progress = 0;
+        const interval = setInterval(function() {
+            progress += Math.random() * 18;
+            if (progress > 92) progress = 92;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }, 180);
 
-    // Limpiar el intervalo cuando el formulario se envíe
-    setTimeout(function() {
-        clearInterval(interval);
-    }, 1500);
-});
+        // Limpiar el intervalo
+        setTimeout(function() {
+            clearInterval(interval);
+        }, 1200);
+    });
 
-// Validación del archivo en el cliente
-document.getElementById('xlsx_file').addEventListener('change', function() {
-    const file = this.files[0];
-    if (file) {
-        if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
-            alert('El archivo es demasiado grande. Máximo 10MB permitido.');
-            this.value = '';
-        }
-
-        const fileName = file.name.toLowerCase();
-        if (!fileName.endsWith('.xlsx')) {
-            alert('Solo se permiten archivos XLSX.');
-            this.value = '';
-        }
-
-        // Verificación del tipo MIME
-        if (file.type && !file.type.includes('spreadsheetml')) {
-            alert('El archivo no parece ser un XLSX válido.');
-            this.value = '';
-        }
-
-        // Verificación básica del nombre del archivo
-        if (fileName.includes('credit')) {
-            console.log('Archivo de créditos XLSX detectado correctamente.');
-        } else {
-            if (confirm(
-                    'El nombre del archivo no contiene "credit". ¿Está seguro de que es el archivo correcto?'
-                    )) {
-                console.log('Usuario confirmó el archivo XLSX.');
-            } else {
+    // Validación del archivo en el cliente
+    document.getElementById('xlsx_file').addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
+                alert('El archivo es demasiado grande. Máximo 10MB permitido.');
                 this.value = '';
+                return;
             }
+
+            const fileName = file.name.toLowerCase();
+            if (!fileName.endsWith('.xlsx')) {
+                alert('Solo se permiten archivos XLSX.');
+                this.value = '';
+                return;
+            }
+
+            console.log('✅ Archivo XLSX seleccionado para parser con mapeo de campos:', fileName);
+            console.log('📊 Tamaño:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+
+            // Mostrar información positiva
+            const formText = document.querySelector('.form-text');
+            formText.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Archivo XLSX listo - Parser con mapeo de campos activado';
+            formText.className = 'form-text text-success';
         }
-    }
-});
+    });
 </script>
 
 <?php
