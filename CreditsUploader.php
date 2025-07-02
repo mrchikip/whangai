@@ -690,8 +690,9 @@ include("includes/header.php");
                     </div>
                     <div class="card-body">
                         <!-- Alerta sobre data descriptors y mapeo -->
-                        <div class="alert alert-success">
-                            <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Problema Resuelto - Data Descriptors + Mapeo de Campos:</h6>
+                        <!-- <div class="alert alert-success">
+                            <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Problema Resuelto - Data
+                                Descriptors + Mapeo de Campos:</h6>
                             <div class="row">
                                 <div class="col-md-6">
                                     <ul class="mb-0 small">
@@ -710,11 +711,12 @@ include("includes/header.php");
                                     </ul>
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
 
                         <!-- Mapeo de campos -->
-                        <div class="alert alert-info">
-                            <h6 class="alert-heading"><i class="fas fa-exchange-alt me-2"></i>Mapeo Automático de Campos:</h6>
+                        <!-- <div class="alert alert-info">
+                            <h6 class="alert-heading"><i class="fas fa-exchange-alt me-2"></i>Mapeo Automático de
+                                Campos:</h6>
                             <div class="row">
                                 <div class="col-md-6">
                                     <strong>Ejemplos de mapeo XLSX → BD:</strong>
@@ -735,26 +737,31 @@ include("includes/header.php");
                                     </ul>
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
 
                         <!-- Instrucciones -->
-                        <div class="alert alert-warning">
+                        <div class="alert alert-info">
                             <h6 class="alert-heading"><i class="fas fa-upload me-2"></i>Instrucciones:</h6>
                             <ul class="mb-0">
                                 <li>Selecciona tu archivo XLSX directamente del sistema</li>
-                                <li><strong>Mapeo automático:</strong> Los nombres de columnas se mapean automáticamente (ej: "Credit #" → CreditNum)</li>
-                                <li><strong>Campos requeridos:</strong> Credit #, Customer, Amount deben estar presentes</li>
+                                <li><strong>Mapeo automático:</strong> Los nombres de columnas se mapean automáticamente
+                                    (ej: "Credit #" → CreditNum)</li>
+                                <li><strong>Campos requeridos:</strong> Credit #, Customer, Amount deben estar presentes
+                                </li>
                                 <li><strong>Limpieza automática:</strong> Se omiten las primeras 16 filas (basura)</li>
                                 <li><strong>Encabezados:</strong> La fila 17 se lee para mapear nombres de columnas</li>
-                                <li><strong>Datos:</strong> Se procesan desde la fila 18 hasta las últimas 33 filas (que se omiten porque contienen comentarios)</li>
+                                <li><strong>Datos:</strong> Se procesan desde la fila 18 hasta las últimas 33 filas (que
+                                    se omiten porque contienen comentarios)</li>
                                 <li>Tamaño máximo: 10MB</li>
-                                <li><strong>Compatible:</strong> Con archivos XLSX que usan data descriptors y nombres de columnas diferentes</li>
+                                <li><strong>Compatible:</strong> Con archivos XLSX que usan data descriptors y nombres
+                                    de columnas diferentes</li>
                             </ul>
                         </div>
 
                         <!-- Proceso de limpieza -->
-                        <div class="alert alert-secondary">
-                            <h6 class="alert-heading"><i class="fas fa-broom me-2"></i>Proceso de Limpieza Automática:</h6>
+                        <!-- <div class="alert alert-secondary">
+                            <h6 class="alert-heading"><i class="fas fa-broom me-2"></i>Proceso de Limpieza Automática:
+                            </h6>
                             <div class="row">
                                 <div class="col-md-4">
                                     <strong>Filas 1-16:</strong><br>
@@ -770,16 +777,18 @@ include("includes/header.php");
                                 </div>
                             </div>
                             <hr>
-                            <small><strong>Solo se procesan las filas de datos válidas:</strong> Desde fila 18 hasta (total - 33)<br>
-                                <strong>Importante:</strong> Las últimas 33 filas contienen 1 fila en blanco + 32 filas de comentarios que NO deben procesarse</small>
-                        </div>
+                            <small><strong>Solo se procesan las filas de datos válidas:</strong> Desde fila 18 hasta
+                                (total - 33)<br>
+                                <strong>Importante:</strong> Las últimas 33 filas contienen 1 fila en blanco + 32 filas
+                                de comentarios que NO deben procesarse</small>
+                        </div> -->
 
                         <!-- Mensajes de resultado -->
                         <?php if ($message): ?>
-                            <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-                                <?php echo $message; ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
+                        <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+                            <?php echo $message; ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
                         <?php endif; ?>
 
                         <!-- Formulario de subida -->
@@ -816,7 +825,7 @@ include("includes/header.php");
                 </div>
 
                 <!-- Información técnica -->
-                <div class="card mt-3">
+                <!-- <div class="card mt-3">
                     <div class="card-body">
                         <h6 class="card-title">
                             <i class="fas fa-cogs me-2 text-success"></i>Soporte Técnico: Data Descriptors + Mapeo de Campos
@@ -845,67 +854,68 @@ include("includes/header.php");
                             a los nombres de la base de datos (ej: "Credit #" → "CreditNum"), resolviendo las diferencias de nomenclatura.
                         </small>
                     </div>
-                </div>
+                </div> -->
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Proteger la página
-    document.addEventListener('DOMContentLoaded', function() {
-        protectPage();
-    });
+// Proteger la página
+document.addEventListener('DOMContentLoaded', function() {
+    protectPage();
+});
 
-    // Manejo del formulario de upload
-    document.getElementById('uploadForm').addEventListener('submit', function() {
-        const submitBtn = document.getElementById('submitBtn');
-        const progressContainer = document.getElementById('progressContainer');
+// Manejo del formulario de upload
+document.getElementById('uploadForm').addEventListener('submit', function() {
+    const submitBtn = document.getElementById('submitBtn');
+    const progressContainer = document.getElementById('progressContainer');
 
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando XLSX con Mapeo de Campos...';
-        progressContainer.style.display = 'block';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando XLSX con Mapeo de Campos...';
+    progressContainer.style.display = 'block';
 
-        // Progreso optimista para la versión con mapeo
-        let progress = 0;
-        const interval = setInterval(function() {
-            progress += Math.random() * 18;
-            if (progress > 92) progress = 92;
-            document.getElementById('progressBar').style.width = progress + '%';
-        }, 180);
+    // Progreso optimista para la versión con mapeo
+    let progress = 0;
+    const interval = setInterval(function() {
+        progress += Math.random() * 18;
+        if (progress > 92) progress = 92;
+        document.getElementById('progressBar').style.width = progress + '%';
+    }, 180);
 
-        // Limpiar el intervalo
-        setTimeout(function() {
-            clearInterval(interval);
-        }, 1200);
-    });
+    // Limpiar el intervalo
+    setTimeout(function() {
+        clearInterval(interval);
+    }, 1200);
+});
 
-    // Validación del archivo en el cliente
-    document.getElementById('xlsx_file').addEventListener('change', function() {
-        const file = this.files[0];
-        if (file) {
-            if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
-                alert('El archivo es demasiado grande. Máximo 10MB permitido.');
-                this.value = '';
-                return;
-            }
-
-            const fileName = file.name.toLowerCase();
-            if (!fileName.endsWith('.xlsx')) {
-                alert('Solo se permiten archivos XLSX.');
-                this.value = '';
-                return;
-            }
-
-            console.log('✅ Archivo XLSX seleccionado para parser con mapeo de campos:', fileName);
-            console.log('📊 Tamaño:', (file.size / 1024 / 1024).toFixed(2), 'MB');
-
-            // Mostrar información positiva
-            const formText = document.querySelector('.form-text');
-            formText.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Archivo XLSX listo - Parser con mapeo de campos activado';
-            formText.className = 'form-text text-success';
+// Validación del archivo en el cliente
+document.getElementById('xlsx_file').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+        if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
+            alert('El archivo es demasiado grande. Máximo 10MB permitido.');
+            this.value = '';
+            return;
         }
-    });
+
+        const fileName = file.name.toLowerCase();
+        if (!fileName.endsWith('.xlsx')) {
+            alert('Solo se permiten archivos XLSX.');
+            this.value = '';
+            return;
+        }
+
+        console.log('✅ Archivo XLSX seleccionado para parser con mapeo de campos:', fileName);
+        console.log('📊 Tamaño:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+
+        // Mostrar información positiva
+        const formText = document.querySelector('.form-text');
+        formText.innerHTML =
+            '<i class="fas fa-check-circle text-success me-1"></i>Archivo XLSX listo - Parser con mapeo de campos activado';
+        formText.className = 'form-text text-success';
+    }
+});
 </script>
 
 <?php
