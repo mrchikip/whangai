@@ -4,6 +4,27 @@ include("db.php");
 // Incluir autenticación Firebase
 include("includes/auth.php");
 
+// Verificar disponibilidad de funciones PHP básicas
+function checkPHPExtensions()
+{
+    $missing = [];
+    $alternatives = [];
+
+    if (!function_exists('file_get_contents')) {
+        $missing[] = 'file_get_contents';
+        $alternatives[] = 'Función PHP básica requerida';
+    }
+
+    if (!function_exists('preg_match')) {
+        $missing[] = 'preg_match (PCRE)';
+        $alternatives[] = 'Extensión PCRE requerida (generalmente incluida)';
+    }
+
+    // Esta implementación no requiere ZipArchive, DOMDocument es opcional
+
+    return ['missing' => $missing, 'alternatives' => $alternatives];
+}
+
 // Configuración de seguridad
 define('MAX_FILE_SIZE', 10 * 1024 * 1024); // 10MB para XLSX
 define('ALLOWED_EXTENSIONS', ['xlsx']);
@@ -396,8 +417,26 @@ include("includes/header.php");
                             </ul>
                         </div>
 
+                        <!-- Verificación de funciones PHP -->
+                        <?php
+                        $phpCheck = checkPHPExtensions();
+                        if (!empty($phpCheck['missing'])): ?>
+                        <div class="alert alert-danger">
+                            <h6 class="alert-heading"><i class="fas fa-times-circle me-2"></i>Error del Servidor:</h6>
+                            <p><strong>Funciones PHP faltantes:</strong> <?= implode(', ', $phpCheck['missing']) ?></p>
+                            <p class="mb-0">Contacte al administrador del hosting para resolver este problema.</p>
+                        </div>
+                        <?php else: ?>
+                        <div class="alert alert-success">
+                            <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Procesador XLSX Nativo:
+                            </h6>
+                            <p class="mb-0">Sistema listo para procesar archivos XLSX usando implementación PHP pura
+                                (sin dependencias externas).</p>
+                        </div>
+                        <?php endif; ?>
+
                         <!-- Proceso de limpieza -->
-                        <!-- <div class="alert alert-warning">
+                        <div class="alert alert-warning">
                             <h6 class="alert-heading"><i class="fas fa-broom me-2"></i>Proceso de Limpieza Automática:
                             </h6>
                             <div class="row">
@@ -417,10 +456,10 @@ include("includes/header.php");
                             <hr>
                             <small><strong>Solo se procesan las filas de datos válidas:</strong> Desde fila 18 hasta
                                 (total - 33)</small>
-                        </div> -->
+                        </div>
 
                         <!-- Estructura de columnas esperada -->
-                        <!-- <div class="alert alert-secondary">
+                        <div class="alert alert-secondary">
                             <h6 class="alert-heading"><i class="fas fa-table me-2"></i>Estructura esperada del XLSX (31
                                 columnas):</h6>
                             <small class="text-muted">
@@ -438,10 +477,10 @@ include("includes/header.php");
                                 TotalCredits, <strong>AC:</strong> CreditReason,
                                 <strong>AD:</strong> TaxPercent, <strong>AE:</strong> UnitCost
                             </small>
-                        </div> -->
+                        </div>
 
                         <!-- Nuevas características XLSX -->
-                        <!-- <div class="alert alert-success">
+                        <div class="alert alert-success">
                             <h6 class="alert-heading"><i class="fas fa-magic me-2"></i>Características del Procesador
                                 XLSX:</h6>
                             <ul class="mb-0">
@@ -458,7 +497,7 @@ include("includes/header.php");
                                 <li><strong>Sin dependencias:</strong> Procesamiento nativo PHP sin librerías externas
                                 </li>
                             </ul>
-                        </div> -->
+                        </div>
 
                         <!-- Mensajes de resultado -->
                         <?php if ($message): ?>
@@ -487,12 +526,12 @@ include("includes/header.php");
 
                             <!-- Barra de progreso -->
                             <div class="progress mb-3" id="progressContainer" style="display: none;">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
                                     id="progressBar" role="progressbar" style="width: 0%"></div>
                             </div>
 
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-success btn-lg text-white" id="submitBtn">
+                                <button type="submit" class="btn btn-warning btn-lg text-dark" id="submitBtn">
                                     <i class="fas fa-file-excel me-2"></i>
                                     Procesar Archivo XLSX de Créditos
                                 </button>
@@ -502,7 +541,7 @@ include("includes/header.php");
                 </div>
 
                 <!-- Información técnica -->
-                <!-- <div class="card mt-3">
+                <div class="card mt-3">
                     <div class="card-body">
                         <h6 class="card-title">
                             <i class="fas fa-cogs me-2 text-warning"></i>Información Técnica del Procesador XLSX
@@ -526,7 +565,7 @@ include("includes/header.php");
                             </div>
                         </div>
                     </div>
-                </div> -->
+                </div>
             </div>
         </div>
     </div>
@@ -588,7 +627,7 @@ document.getElementById('xlsx_file').addEventListener('change', function() {
         } else {
             if (confirm(
                     'El nombre del archivo no contiene "credit". ¿Está seguro de que es el archivo correcto?'
-                )) {
+                    )) {
                 console.log('Usuario confirmó el archivo XLSX.');
             } else {
                 this.value = '';
