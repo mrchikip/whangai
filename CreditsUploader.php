@@ -814,11 +814,19 @@ include("includes/header.php");
                                     id="progressBar" role="progressbar" style="width: 0%"></div>
                             </div>
 
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
-                                    <i class="fas fa-file-excel me-2"></i>
-                                    Procesar Archivo XLSX (Con Mapeo de Campos)
-                                </button>
+                            <div class="mt-auto">
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                                        <i class="fas fa-file-excel me-2"></i>
+                                        Procesar Archivo Creditos XLSX
+                                    </button>
+
+                                    <button type="button" class="btn btn-success btn-lg w-100"
+                                        onclick="window.location.href='updater.php'">
+                                        <i class="fa-solid fa-circle-arrow-left"></i>
+                                        Regresar
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>

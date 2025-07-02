@@ -173,10 +173,31 @@ include("includes/header.php");
                         </div>
                     </div>
                 </div>
+                <div class="container mt-4">
+                    <div class="row justify-content-center align-items-stretch">
+                        <div class="col-12">
+                            <div class="card shadow" style="width: 80vw; margin: 0 auto;">
+                                <div class="card-body">
+                                    <div class="row justify-content-center align-items-stretch">
+                                        <button type="button" class="btn btn-success btn-lg w-100"
+                                            onclick="window.location.href='Landing.php'">
+                                            <i class="fa-solid fa-circle-arrow-left"></i>
+                                            Regresar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+
+
+
 
 <script>
 // Función para verificar cantidad de registros y confirmar eliminación

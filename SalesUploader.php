@@ -8,6 +8,7 @@ include("includes/auth.php");
 define('MAX_FILE_SIZE', 4 * 1024 * 1024); // 4MB
 define('ALLOWED_EXTENSIONS', ['csv']);
 define('UPLOAD_DIR', 'uploads/');
+define('EXPECTED_COLUMNS', 60); // Corregido: el archivo tiene 60 columnas, no 62
 
 // Función para generar token CSRF
 function generateCSRFToken()
@@ -35,6 +36,13 @@ function convertDate($dateString)
 {
     if (empty($dateString)) return null;
 
+    // Si contiene fecha y hora (formato como "05/12/2025 15:31:36")
+    $date = DateTime::createFromFormat('m/d/Y H:i:s', $dateString);
+    if ($date !== false) {
+        return $date->format('Y-m-d');
+    }
+
+    // Formatos de solo fecha
     $date = DateTime::createFromFormat('n/j/Y', $dateString);
     if ($date === false) {
         $date = DateTime::createFromFormat('m/d/Y', $dateString);
@@ -48,8 +56,6 @@ function convertDate($dateString)
 
     return $date !== false ? $date->format('Y-m-d') : null;
 }
-
-// session_start() ya está incluido en db.php
 
 $message = '';
 $messageType = '';
@@ -87,8 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         mysqli_set_charset($conn2, 'utf8');
 
-                        // Preparar la consulta de inserción
-                        // Nota: No incluimos IdSaleTrx porque es AUTO_INCREMENT
+                        // Preparar la consulta de inserción (60 columnas - SIN IdSaleTrx que es AUTO_INCREMENT)
                         $insertQuery = "INSERT INTO sales (
                             InvoiceNumber, PrebookNumber, PrebookCreatedOn, InvoiceDate,
                             PONumber, SONumber, FarmShipDate, AWB, TruckDate, TruckMonth,
@@ -100,8 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             TotalPrice, UnitCost, TotalCost, HandlingCostUnit, AWBFreightCostUnit,
                             DutiesCostUnit, LandedCostUnit, GPM, TotalHandling, TotalAWBFreight,
                             TotalLandedCost, OrderType, CustomerCode, ProductLegacyCode,
-                            ProductVBN, CarrierCode, SalespersonCode, Cubes, Aging, svfactores
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                            ProductVBN, CarrierCode, SalespersonCode, Cubes, Aging
+                        ) VALUES (" . str_repeat('?,', EXPECTED_COLUMNS - 1) . "?)";
 
                         $stmt = $conn2->prepare($insertQuery);
 
@@ -118,28 +123,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $lineNumber = 0;
                         $insertedRows = 0;
                         $errors = [];
+                        $headersFound = false;
 
                         while (($data = fgetcsv($handle, 1000, ',', '"')) !== FALSE) {
                             $lineNumber++;
 
-                            // Saltar la primera línea (encabezados)
-                            if ($lineNumber === 1) {
+                            // SALTAR LAS PRIMERAS 5 FILAS DE METADATA
+                            if ($lineNumber <= 5) {
+                                error_log("CSV Sales: Saltando fila $lineNumber (metadata): " . implode(',', array_slice($data, 0, 3)));
                                 continue;
                             }
 
-                            // Verificar que tenemos el número correcto de columnas (62)
-                            if (count($data) !== 62) {
-                                $errors[] = "Línea $lineNumber: Número incorrecto de columnas (" . count($data) . " encontradas, 62 esperadas)";
+                            // FILA 6 SON LOS ENCABEZADOS REALES
+                            if ($lineNumber === 6) {
+                                $headersFound = true;
+                                error_log("CSV Sales: Encabezados encontrados en fila 6: " . implode(',', array_slice($data, 0, 5)));
+                                error_log("CSV Sales: Total de columnas en encabezados: " . count($data));
                                 continue;
                             }
 
-                            // Saltar la primera columna (IdSaleTrx) ya que es AUTO_INCREMENT
-                            $dataWithoutId = array_slice($data, 1);
+                            // PROCESAR DATOS DESDE LA FILA 7
+                            if (!$headersFound) {
+                                $errors[] = "Línea $lineNumber: No se encontraron encabezados válidos";
+                                continue;
+                            }
 
-                            // Sanitizar y procesar los datos (ahora son 61 columnas)
-                            $cleanData = array_map('sanitizeData', $dataWithoutId);
+                            // Verificar que tenemos el número correcto de columnas
+                            if (count($data) !== EXPECTED_COLUMNS) {
+                                $errors[] = "Línea $lineNumber: Número incorrecto de columnas (" . count($data) . " encontradas, " . EXPECTED_COLUMNS . " esperadas)";
+                                continue;
+                            }
 
-                            // Convertir fechas (índices ajustados después de remover IdSaleTrx)
+                            // Verificar que no sea una fila completamente vacía
+                            $hasData = false;
+                            foreach ($data as $cell) {
+                                if (!empty(trim($cell))) {
+                                    $hasData = true;
+                                    break;
+                                }
+                            }
+
+                            if (!$hasData) {
+                                continue; // Saltar filas completamente vacías
+                            }
+
+                            // Sanitizar y procesar los datos (usar todas las 60 columnas)
+                            $cleanData = array_map('sanitizeData', $data);
+
+                            // Convertir fechas específicas (índices basados en el orden real del CSV)
                             $cleanData[2] = convertDate($cleanData[2]); // PrebookCreatedOn (índice 2)
                             $cleanData[3] = convertDate($cleanData[3]); // InvoiceDate (índice 3)
                             $cleanData[6] = convertDate($cleanData[6]); // FarmShipDate (índice 6)
@@ -152,8 +183,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
 
-                            // Bind parameters - usar 61 parámetros tipo 's'
-                            $stmt->bind_param(str_repeat('s', 61), ...array_values($cleanData));
+                            // Validar que al menos tenemos InvoiceNumber (primera columna)
+                            if (empty($cleanData[0])) {
+                                $errors[] = "Línea $lineNumber: InvoiceNumber es requerido";
+                                continue;
+                            }
+
+                            // Bind parameters - usar EXPECTED_COLUMNS parámetros tipo 's'
+                            $stmt->bind_param(str_repeat('s', EXPECTED_COLUMNS), ...array_values($cleanData));
 
                             if ($stmt->execute()) {
                                 $insertedRows++;
@@ -164,10 +201,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         fclose($handle);
                         $stmt->close();
-                        // No cerramos $conn2 ya que viene de db.php
 
                         if ($insertedRows > 0) {
-                            $message = "Proceso completado exitosamente. $insertedRows filas insertadas.";
+                            $message = "Proceso completado exitosamente. $insertedRows filas de ventas insertadas.";
                             $messageType = 'success';
 
                             if (!empty($errors)) {
@@ -189,6 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (Exception $e) {
                         $message = 'Error: ' . $e->getMessage();
                         $messageType = 'danger';
+                        error_log("CSV Sales Error: " . $e->getMessage());
                     }
                 }
             }
@@ -221,29 +258,77 @@ include("includes/header.php");
                     <div class="card-header bg-success text-white">
                         <h3 class="card-title mb-0">
                             <i class="fas fa-upload me-2"></i>
-                            Subir Archivo CSV - Puawai Sales Data
+                            Subir Archivo CSV - Puawai Sales Data (Corregido)
                         </h3>
                     </div>
                     <div class="card-body">
-                        <!-- Instrucciones -->
+                        <!-- Alerta sobre correcciones -->
+                        <!-- <div class="alert alert-success">
+                            <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Versión Corregida:</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul class="mb-0 small">
+                                        <li>✅ <strong>60 columnas:</strong> Ajustado al formato real del archivo</li>
+                                        <li>✅ <strong>Omite metadata:</strong> Salta las primeras 5 filas</li>
+                                        <li>✅ <strong>Headers en fila 6:</strong> Lee encabezados correctamente</li>
+                                        <li>✅ <strong>Datos desde fila 7:</strong> Procesa información real</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="mb-0 small">
+                                        <li>✅ <strong>Fechas mejoradas:</strong> Soporta formato con hora</li>
+                                        <li>✅ <strong>Validación robusta:</strong> Verifica estructura</li>
+                                        <li>✅ <strong>Logs detallados:</strong> Para debugging</li>
+                                        <li>✅ <strong>Manejo de errores:</strong> Reporta problemas específicos</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div> -->
+
+                        <!-- Instrucciones actualizadas -->
                         <div class="alert alert-info">
                             <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Instrucciones:</h6>
                             <ul class="mb-0">
                                 <li>Selecciona un archivo CSV con los datos de ventas de Puawai</li>
-                                <li>El archivo debe tener exactamente 62 columnas</li>
-                                <li>La primera fila debe contener los encabezados</li>
-                                <li>La primera columna (IdSaleTrx) se omite automáticamente</li>
+                                <li><strong>Estructura esperada:</strong> 5 filas de metadata + 1 fila de encabezados +
+                                    datos</li>
+                                <li>El archivo debe tener exactamente <strong>60 columnas</strong></li>
+                                <li><strong>Encabezados:</strong> Deben estar en la fila 6</li>
+                                <li><strong>Datos:</strong> Se procesan desde la fila 7 en adelante</li>
                                 <li>Tamaño máximo: 4MB</li>
-                                <li>Formatos de fecha soportados: m/d/Y o n/j/Y (con o sin hora)</li>
+                                <li>Formatos de fecha soportados: m/d/Y, n/j/Y (con o sin hora)</li>
                             </ul>
                         </div>
 
+                        <!-- Estructura del archivo -->
+                        <!-- <div class="alert alert-warning">
+                            <h6 class="alert-heading"><i class="fas fa-file-alt me-2"></i>Estructura del Archivo CSV:
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>Filas 1-5:</strong><br>
+                                    <span class="text-danger">❌ Metadata (omitidas)</span><br>
+                                    <small>Sales Details, fechas, filtros</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Fila 6:</strong><br>
+                                    <span class="text-info">📋 Encabezados (60 columnas)</span><br>
+                                    <small>Invoice Number, Prebook Number...</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Filas 7+:</strong><br>
+                                    <span class="text-success">✅ Datos (procesados)</span><br>
+                                    <small>Registros de ventas reales</small>
+                                </div>
+                            </div>
+                        </div> -->
+
                         <!-- Mensajes de resultado -->
                         <?php if ($message): ?>
-                        <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-                            <?php echo $message; ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
+                            <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+                                <?php echo $message; ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
                         <?php endif; ?>
 
                         <!-- Formulario de subida -->
@@ -252,73 +337,131 @@ include("includes/header.php");
 
                             <div class="mb-3">
                                 <label for="csv_file" class="form-label">
-                                    <i class="fas fa-file-csv me-2"></i>Seleccionar archivo CSV:
+                                    <i class="fas fa-file-csv me-2"></i>Seleccionar archivo CSV de Ventas:
                                 </label>
                                 <input type="file" name="csv_file" id="csv_file" class="form-control" accept=".csv"
                                     required>
                                 <div class="form-text">
-                                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
-                                    Archivo CSV requerido (máximo 4MB)
+                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                    Archivo CSV corregido para 60 columnas (máximo 4MB)
                                 </div>
                             </div>
 
                             <!-- Barra de progreso -->
                             <div class="progress mb-3" id="progressContainer" style="display: none;">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar"
-                                    role="progressbar" style="width: 0%"></div>
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                    id="progressBar" role="progressbar" style="width: 0%"></div>
                             </div>
 
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
-                                    <i class="fas fa-cloud-upload-alt me-2"></i>
-                                    Subir y Procesar CSV
-                                </button>
+
+                            <div class="mt-auto">
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                                        <i class="fas fa-cloud-upload-alt me-2"></i>
+                                        Subir y Procesar Ventas CSV
+                                    </button>
+
+                                    <button type="button" class="btn btn-success btn-lg w-100"
+                                        onclick="window.location.href='updater.php'">
+                                        <i class="fa-solid fa-circle-arrow-left"></i>
+                                        Regresar
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
                 </div>
+
+                <!-- Información técnica -->
+                <!-- <div class="card mt-3">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-cogs me-2 text-success"></i>Correcciones Implementadas
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="mb-0 small">
+                                    <li><strong>Columnas:</strong> Ajustado de 62 a 60 columnas</li>
+                                    <li><strong>Metadata:</strong> Omite primeras 5 filas automáticamente</li>
+                                    <li><strong>Headers:</strong> Lee fila 6 como encabezados</li>
+                                    <li><strong>Fechas:</strong> Soporta formato "05/12/2025 15:31:36"</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="mb-0 small">
+                                    <li><strong>Validación:</strong> Verifica 60 columnas por fila</li>
+                                    <li><strong>Logs:</strong> Debugging detallado del proceso</li>
+                                    <li><strong>Errores:</strong> Reporta líneas específicas con problemas</li>
+                                    <li><strong>Base de datos:</strong> Prepared statements seguros</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <hr>
+                        <small class="text-muted">
+                            <strong>Versión corregida:</strong> Este código ha sido ajustado específicamente para
+                            manejar
+                            la estructura real de tu archivo CSV de ventas con 60 columnas y metadata al inicio.
+                        </small>
+                    </div>
+                </div> -->
             </div>
         </div>
     </div>
 </div>
 
 <script>
-document.getElementById('uploadForm').addEventListener('submit', function() {
-    const submitBtn = document.getElementById('submitBtn');
-    const progressContainer = document.getElementById('progressContainer');
+    // Proteger la página
+    document.addEventListener('DOMContentLoaded', function() {
+        protectPage();
+    });
 
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
-    progressContainer.style.display = 'block';
+    document.getElementById('uploadForm').addEventListener('submit', function() {
+        const submitBtn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
 
-    // Simular progreso (ya que no podemos obtener el progreso real del servidor)
-    let progress = 0;
-    const interval = setInterval(function() {
-        progress += Math.random() * 15;
-        if (progress > 90) progress = 90;
-        document.getElementById('progressBar').style.width = progress + '%';
-    }, 200);
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando CSV Corregido...';
+        progressContainer.style.display = 'block';
 
-    // Limpiar el intervalo cuando el formulario se envíe
-    setTimeout(function() {
-        clearInterval(interval);
-    }, 1000);
-});
+        // Progreso más rápido para CSV
+        let progress = 0;
+        const interval = setInterval(function() {
+            progress += Math.random() * 20;
+            if (progress > 90) progress = 90;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }, 150);
 
-// Validación del archivo en el cliente
-document.getElementById('csv_file').addEventListener('change', function() {
-    const file = this.files[0];
-    if (file) {
-        if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
-            alert('El archivo es demasiado grande. Máximo 4MB permitido.');
-            this.value = '';
+        // Limpiar el intervalo cuando el formulario se envíe
+        setTimeout(function() {
+            clearInterval(interval);
+        }, 800);
+    });
+
+    // Validación del archivo en el cliente
+    document.getElementById('csv_file').addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
+                alert('El archivo es demasiado grande. Máximo 4MB permitido.');
+                this.value = '';
+                return;
+            }
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                alert('Solo se permiten archivos CSV.');
+                this.value = '';
+                return;
+            }
+
+            console.log('✅ Archivo CSV seleccionado:', file.name);
+            console.log('📊 Tamaño:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+
+            // Mostrar información positiva
+            const formText = document.querySelector('.form-text');
+            formText.innerHTML =
+                '<i class="fas fa-check-circle text-success me-1"></i>Archivo CSV válido - Versión corregida para 60 columnas';
+            formText.className = 'form-text text-success';
         }
-        if (!file.name.toLowerCase().endsWith('.csv')) {
-            alert('Solo se permiten archivos CSV.');
-            this.value = '';
-        }
-    }
-});
+    });
 </script>
 
 <?php
