@@ -32,71 +32,74 @@
             <div class="collapse navbar-collapse d-grid gap-2 d-md-flex justify-content-md-end" id="navbarText">
                 <span class="navbar-text">
                     <small class="text-white me-md-2">Usuario: <span id="user-email"></span></small>
-                    <button onclick="logout()" class="btn btn-sm btn-secondary">Logout</button>
+                    <button onclick="logout()" class="btn btn-sm btn-secondary">
+                        <i class="fa-solid fa-power-off"></i>
+                        Logout
+                    </button>
                 </span>
             </div>
         </div>
     </nav>
 
     <script>
-        // Función para mostrar el email del usuario en el header
-        function updateUserInfo() {
-            checkAuth(function(user) {
-                const userEmailElement = document.getElementById('user-email');
-                if (userEmailElement && user) {
-                    userEmailElement.textContent = user.email;
-                }
-            });
-        }
-
-        // Función de logout mejorada para usar includes/logout.php
-        function logout() {
-            // Primero cerrar sesión en Firebase
-            firebase.auth().signOut().then(() => {
-                console.log('Usuario desconectado de Firebase');
-
-                // Luego limpiar la sesión PHP usando includes/logout.php
-                fetch('includes/logout.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            console.log('Sesión PHP cerrada:', data.message);
-                        } else {
-                            console.warn('Error cerrando sesión PHP:', data.message || 'Error desconocido');
-                        }
-                        // Redirigir independientemente del resultado
-                        window.location.href = 'index.php';
-                    })
-                    .catch(error => {
-                        console.error('Error al cerrar sesión PHP:', error);
-                        // Redirigir de todas formas ya que Firebase ya cerró sesión
-                        window.location.href = 'index.php';
-                    });
-            }).catch((error) => {
-                console.error('Error al cerrar sesión en Firebase:', error);
-                // Si Firebase falla, intentar cerrar sesión PHP de todas formas
-                fetch('includes/logout.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    })
-                    .then(() => {
-                        window.location.href = 'index.php';
-                    })
-                    .catch(() => {
-                        window.location.href = 'index.php';
-                    });
-            });
-        }
-
-        // Actualizar la información del usuario cuando carga la página
-        document.addEventListener('DOMContentLoaded', function() {
-            updateUserInfo();
+    // Función para mostrar el email del usuario en el header
+    function updateUserInfo() {
+        checkAuth(function(user) {
+            const userEmailElement = document.getElementById('user-email');
+            if (userEmailElement && user) {
+                userEmailElement.textContent = user.email;
+            }
         });
+    }
+
+    // Función de logout mejorada para usar includes/logout.php
+    function logout() {
+        // Primero cerrar sesión en Firebase
+        firebase.auth().signOut().then(() => {
+            console.log('Usuario desconectado de Firebase');
+
+            // Luego limpiar la sesión PHP usando includes/logout.php
+            fetch('includes/logout.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Sesión PHP cerrada:', data.message);
+                    } else {
+                        console.warn('Error cerrando sesión PHP:', data.message || 'Error desconocido');
+                    }
+                    // Redirigir independientemente del resultado
+                    window.location.href = 'index.php';
+                })
+                .catch(error => {
+                    console.error('Error al cerrar sesión PHP:', error);
+                    // Redirigir de todas formas ya que Firebase ya cerró sesión
+                    window.location.href = 'index.php';
+                });
+        }).catch((error) => {
+            console.error('Error al cerrar sesión en Firebase:', error);
+            // Si Firebase falla, intentar cerrar sesión PHP de todas formas
+            fetch('includes/logout.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(() => {
+                    window.location.href = 'index.php';
+                })
+                .catch(() => {
+                    window.location.href = 'index.php';
+                });
+        });
+    }
+
+    // Actualizar la información del usuario cuando carga la página
+    document.addEventListener('DOMContentLoaded', function() {
+        updateUserInfo();
+    });
     </script>

@@ -685,7 +685,7 @@ include("includes/header.php");
                     <div class="card-header bg-success text-white">
                         <h3 class="card-title mb-0">
                             <i class="fas fa-file-excel me-2"></i>
-                            Subir Archivo XLSX - Puawai Credits Data (Con Mapeo de Campos)
+                            Subir Archivo XLSX - Puawai Credits Data
                         </h3>
                     </div>
                     <div class="card-body">

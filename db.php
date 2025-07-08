@@ -7,12 +7,12 @@ session_start();
 // ============================================
 
 // Database local
-//$conn = mysqli_connect(
-//    'localhost',
-//    'root',
-//    '',
-//    'matua'
-//    );
+$conn2 = mysqli_connect(
+    'localhost',
+    'root',
+    '',
+    'puawai'
+);
 
 // Database remote tareas
 $conn = mysqli_connect(
@@ -31,9 +31,9 @@ $conn = mysqli_connect(
 //);
 
 // Database remote puawai
-$conn2 = mysqli_connect(
-    '184.154.139.180',
-    'superadminvs_cks',
-    'Sandia3415',
-    'superadminvs_puawai'
-);
+// $conn2 = mysqli_connect(
+//     '184.154.139.180',
+//     'superadminvs_cks',
+//     'Sandia3415',
+//     'superadminvs_puawai'
+// );

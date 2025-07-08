@@ -258,7 +258,7 @@ include("includes/header.php");
                     <div class="card-header bg-success text-white">
                         <h3 class="card-title mb-0">
                             <i class="fas fa-upload me-2"></i>
-                            Subir Archivo CSV - Puawai Sales Data (Corregido)
+                            Subir Archivo CSV - Puawai Sales Data
                         </h3>
                     </div>
                     <div class="card-body">
