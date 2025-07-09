@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="card-body d-flex flex-column text-center">
             <!-- Icono -->
             <div class="mb-3">
-                <i class="fa-solid fa-database" style="font-size: 3rem; color: #0d6efd;"></i>
+                <i class="fa-solid fa-database" style="font-size: 3rem; color: #198754;"></i>
             </div>
 
             <!-- Título centrado -->
@@ -116,23 +116,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="mt-auto">
                     <div class="d-grid gap-2">
                         <!-- Botón SVFactors -->
-                        <button type="button" id="svfactorsBtn" class="btn btn-primary btn-lg w-100"
+                        <button type="button" id="svfactorsBtn" class="btn btn-success btn-lg w-100"
                             onclick="confirmSQLAction('svfactors', 'SVFactors', 'Actualizar valores de svfactores según reglas de Warehouse, Ipanema y Global Rose')">
                             <i class="fa-solid fa-calculator me-2"></i>
                             SVFactors
                         </button>
 
                         <!-- Botón CTB -->
-                        <button type="button" id="ctbBtn" class="btn btn-warning btn-lg w-100"
+                        <button type="button" id="ctbBtn" class="btn btn-success btn-lg w-100"
                             onclick="confirmSQLAction('ctb', 'CTB', 'Cambiar BoxType a CTB para clientes Ipanema')">
                             <i class="fa-solid fa-box me-2"></i>
                             CTB
                         </button>
 
                         <!-- Botón Dump -->
-                        <button type="button" id="dumpBtn" class="btn btn-info btn-lg w-100"
+                        <button type="button" id="dumpBtn" class="btn btn-success btn-lg w-100"
                             onclick="confirmSQLAction('dump', 'Dump', 'Clasificar clientes American Business según margen')">
-                            <i class="fa-solid fa-arrows-split-up-and-left me-2"></i>
+                            <i class="fa-solid fa-trash me-2"></i>
                             Dump
                         </button>
                     </div>
@@ -152,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="card">
         <div class="card-body">
             <h6 class="card-title">
-                <i class="fas fa-info-circle me-2 text-primary"></i>Detalles de los Ajustes SQL
+                <i class="fas fa-info-circle me-2 text-success"></i>Detalles de los Ajustes SQL
             </h6>
             <div class="row">
                 <div class="col-md-4">
@@ -192,14 +192,14 @@ function confirmSQLAction(action, actionName, description) {
         <div class="modal fade" id="confirmSQLModal" tabindex="-1" aria-labelledby="confirmSQLModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
-                    <div class="modal-header bg-warning text-dark">
+                    <div class="modal-header bg-success text-white">
                         <h5 class="modal-title" id="confirmSQLModalLabel">
                             <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Ajuste SQL
                         </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="alert alert-warning">
+                        <div class="alert alert-success">
                             <h6 class="alert-heading">
                                 <i class="fas fa-database me-2"></i>Acción: ${actionName}
                             </h6>
@@ -212,7 +212,7 @@ function confirmSQLAction(action, actionName, description) {
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="fas fa-times me-2"></i>Cancelar
                         </button>
-                        <button type="button" class="btn btn-danger" onclick="executeSQLAction('${action}')">
+                        <button type="button" class="btn btn-success" onclick="executeSQLAction('${action}')">
                             <i class="fas fa-check me-2"></i>Ejecutar Ajuste
                         </button>
                     </div>
@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (dumpBtn) {
         dumpBtn.disabled = false;
-        dumpBtn.innerHTML = '<i class="fa-solid fa-arrows-split-up-and-left me-2"></i>Dump';
+        dumpBtn.innerHTML = '<i class="fa-solid fa-trash me-2"></i>Dump';
     }
 });
 </script>
