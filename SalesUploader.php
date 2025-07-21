@@ -372,38 +372,6 @@ include("includes/header.php");
                     </div>
                 </div>
 
-                <!-- Información técnica -->
-                <!-- <div class="card mt-3">
-                    <div class="card-body">
-                        <h6 class="card-title">
-                            <i class="fas fa-cogs me-2 text-success"></i>Correcciones Implementadas
-                        </h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <ul class="mb-0 small">
-                                    <li><strong>Columnas:</strong> Ajustado de 62 a 60 columnas</li>
-                                    <li><strong>Metadata:</strong> Omite primeras 5 filas automáticamente</li>
-                                    <li><strong>Headers:</strong> Lee fila 6 como encabezados</li>
-                                    <li><strong>Fechas:</strong> Soporta formato "05/12/2025 15:31:36"</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <ul class="mb-0 small">
-                                    <li><strong>Validación:</strong> Verifica 60 columnas por fila</li>
-                                    <li><strong>Logs:</strong> Debugging detallado del proceso</li>
-                                    <li><strong>Errores:</strong> Reporta líneas específicas con problemas</li>
-                                    <li><strong>Base de datos:</strong> Prepared statements seguros</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <hr>
-                        <small class="text-muted">
-                            <strong>Versión corregida:</strong> Este código ha sido ajustado específicamente para
-                            manejar
-                            la estructura real de tu archivo CSV de ventas con 60 columnas y metadata al inicio.
-                        </small>
-                    </div>
-                </div> -->
             </div>
         </div>
     </div>

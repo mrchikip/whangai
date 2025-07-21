@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <!-- Título centrado -->
-            <h5 class="card-title text-center mb-3">Ajustes SQL</h5>
+            <h5 class="card-title text-center mb-3">4- Ajustes SQL</h5>
 
             <!-- Descripción centrada -->
             <p class="card-text text-center flex-grow-1 mb-4">
@@ -143,43 +143,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="hidden" id="hiddenCTBBtn" name="ctb_action">
                 <input type="hidden" id="hiddenDumpBtn" name="dump_action">
             </form>
-        </div>
-    </div>
-</div>
-
-<!-- Información técnica sobre los ajustes -->
-<div class="col-12 mt-3">
-    <div class="card">
-        <div class="card-body">
-            <h6 class="card-title">
-                <i class="fas fa-info-circle me-2 text-success"></i>Detalles de los Ajustes SQL
-            </h6>
-            <div class="row">
-                <div class="col-md-4">
-                    <strong>SVFactors:</strong>
-                    <ul class="mb-0 small">
-                        <li>Establece svfactores = '0' para todos</li>
-                        <li>Cambia a '1' si ShipVia contiene "Warehouse"</li>
-                        <li>Fuerza '0' para clientes Ipanema y Global Rose</li>
-                    </ul>
-                </div>
-                <div class="col-md-4">
-                    <strong>CTB:</strong>
-                    <ul class="mb-0 small">
-                        <li>Cambia BoxType a 'CTB'</li>
-                        <li>Solo para clientes que contengan 'Ipanema'</li>
-                        <li>Ajuste específico de tipo de caja</li>
-                    </ul>
-                </div>
-                <div class="col-md-4">
-                    <strong>Dump:</strong>
-                    <ul class="mb-0 small">
-                        <li>American Business → 'Wholesale' si TotalPrice > TotalCost</li>
-                        <li>American Business → 'Local' si TotalPrice ≤ TotalCost</li>
-                        <li>Clasificación por margen de ganancia</li>
-                    </ul>
-                </div>
-            </div>
         </div>
     </div>
 </div>
