@@ -17,61 +17,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             mysqli_set_charset($conn2, 'utf8');
 
-            // Procesar botón SVFactors
-            if (isset($_POST['svfactors_action'])) {
+            // Procesar botón de Ajustes SQL
+            if (!empty($_POST['sql_adjustments_action'])) {
+                // Array con todas las consultas SQL a ejecutar
                 $queries = [
+                    "UPDATE `sales` SET `BoxType` = 'CTB' WHERE `Customer` LIKE '%Ipanema%'",
                     "UPDATE `sales` SET `svfactores` = '0'",
                     "UPDATE `sales` SET `svfactores` = '1' WHERE `ShipVia` LIKE '%Warehouse%'",
                     "UPDATE `sales` SET `svfactores` = '0' WHERE `customer` LIKE '%Ipanema%'",
-                    "UPDATE `sales` SET `svfactores` = '0' WHERE `customer` LIKE '%GLOBAL ROSE.COM LLC%'"
+                    "UPDATE `sales` SET `svfactores` = '0' WHERE `customer` LIKE '%GLOBAL ROSE.COM LLC%'",
+                    "UPDATE `Sales` SET `Customer` = 'American Business Wholesale' WHERE `Customer` LIKE '%American Business%' AND `TotalPrice` > `TotalCost`",
+                    "UPDATE `Sales` SET `Customer` = 'American Business Local' WHERE `Customer` LIKE '%American Business%' AND `TotalPrice` <= `TotalCost`"
                 ];
 
                 $totalAffected = 0;
-                foreach ($queries as $query) {
+                $executedQueries = 0;
+
+                // Ejecutar cada consulta en secuencia
+                foreach ($queries as $index => $query) {
                     $result = mysqli_query($conn2, $query);
                     if ($result) {
-                        $totalAffected += mysqli_affected_rows($conn2);
+                        $affectedRows = mysqli_affected_rows($conn2);
+                        $totalAffected += $affectedRows;
+                        $executedQueries++;
+
+                        // Log para debug (opcional)
+                        error_log("Query " . ($index + 1) . " ejecutada: $affectedRows filas afectadas");
                     } else {
-                        throw new Exception('Error en SVFactors: ' . mysqli_error($conn2));
+                        throw new Exception('Error en consulta ' . ($index + 1) . ': ' . mysqli_error($conn2) . ' | Query: ' . $query);
                     }
                 }
 
-                $sqlMessage = "SVFactors ejecutado exitosamente. $totalAffected registros actualizados.";
-                $sqlMessageType = 'success';
-            }
-
-            // Procesar botón CTB
-            elseif (isset($_POST['ctb_action'])) {
-                $query = "UPDATE `sales` SET `BoxType` = 'CTB' WHERE `Customer` LIKE '%Ipanema%'";
-                $result = mysqli_query($conn2, $query);
-
-                if ($result) {
-                    $affectedRows = mysqli_affected_rows($conn2);
-                    $sqlMessage = "CTB ejecutado exitosamente. $affectedRows registros actualizados.";
-                    $sqlMessageType = 'success';
-                } else {
-                    throw new Exception('Error en CTB: ' . mysqli_error($conn2));
-                }
-            }
-
-            // Procesar botón Dump
-            elseif (isset($_POST['dump_action'])) {
-                $queries = [
-                    "UPDATE `Sales` SET `Customer` = 'American Business Wholesale' WHERE `Customer` LIKE '%American Business%' AND `TotalPrice`>`TotalCost`",
-                    "UPDATE `Sales` SET `Customer` = 'American Business Local' WHERE `Customer` LIKE '%American Business%' AND `TotalPrice`<=`TotalCost`"
-                ];
-
-                $totalAffected = 0;
-                foreach ($queries as $query) {
-                    $result = mysqli_query($conn2, $query);
-                    if ($result) {
-                        $totalAffected += mysqli_affected_rows($conn2);
-                    } else {
-                        throw new Exception('Error en Dump: ' . mysqli_error($conn2));
-                    }
-                }
-
-                $sqlMessage = "Dump ejecutado exitosamente. $totalAffected registros actualizados.";
+                $sqlMessage = "Ajustes SQL ejecutados exitosamente. $executedQueries consultas completadas, $totalAffected registros actualizados en total.";
                 $sqlMessageType = 'success';
             }
         } catch (Exception $e) {
@@ -97,67 +74,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Descripción centrada -->
             <p class="card-text text-center flex-grow-1 mb-4">
                 Ejecutar ajustes automáticos en la base de datos para actualizar
-                campos específicos según reglas de negocio predefinidas
+                campos específicos según reglas de negocio predefinidas (BoxType, SVFactors y Customer)
             </p>
 
-            <!-- Formulario con botones de ajustes SQL -->
+            <!-- Formulario con botón de ajustes SQL -->
             <form method="POST" id="sqlAdjustmentsForm">
                 <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
 
                 <!-- Mensajes de resultado -->
                 <?php if ($sqlMessage): ?>
-                <div class="alert alert-<?php echo $sqlMessageType; ?> alert-dismissible fade show" role="alert">
-                    <?php echo $sqlMessage; ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                    <div class="alert alert-<?php echo $sqlMessageType; ?> alert-dismissible fade show" role="alert">
+                        <?php echo $sqlMessage; ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 <?php endif; ?>
 
-                <!-- Botones de acción -->
+                <!-- Botón de acción -->
                 <div class="mt-auto">
                     <div class="d-grid gap-2">
-                        <!-- Botón SVFactors -->
-                        <button type="button" id="svfactorsBtn" class="btn btn-success btn-lg w-100"
-                            onclick="confirmSQLAction('svfactors', 'SVFactors', 'Actualizar valores de svfactores según reglas de Warehouse, Ipanema y Global Rose')">
-                            <i class="fa-solid fa-calculator me-2"></i>
-                            SVFactors
-                        </button>
-
-                        <!-- Botón CTB -->
-                        <button type="button" id="ctbBtn" class="btn btn-success btn-lg w-100"
-                            onclick="confirmSQLAction('ctb', 'CTB', 'Cambiar BoxType a CTB para clientes Ipanema')">
-                            <i class="fa-solid fa-box me-2"></i>
-                            CTB
-                        </button>
-
-                        <!-- Botón Dump -->
-                        <button type="button" id="dumpBtn" class="btn btn-success btn-lg w-100"
-                            onclick="confirmSQLAction('dump', 'Dump', 'Clasificar clientes American Business según margen')">
-                            <i class="fa-solid fa-trash me-2"></i>
-                            Dump
+                        <button type="button" id="sqlAdjustmentsBtn" class="btn btn-success btn-lg w-100"
+                            onclick="confirmSQLAction('sql_adjustments', 'Ajustes SQL', 'Ejecutar todas las reglas de negocio: BoxType CTB para Ipanema, actualizar SVFactors según Warehouse/Ipanema/Global Rose, y clasificar American Business por margen')">
+                            <i class="fa-solid fa-database me-2"></i>
+                            Ajustes SQL
                         </button>
                     </div>
                 </div>
 
-                <!-- Botones ocultos para envío real del formulario -->
-                <input type="hidden" id="hiddenSVFactorsBtn" name="svfactors_action">
-                <input type="hidden" id="hiddenCTBBtn" name="ctb_action">
-                <input type="hidden" id="hiddenDumpBtn" name="dump_action">
+                <!-- Botón oculto para envío real del formulario -->
+                <input type="hidden" id="hiddenSQLAdjustmentsBtn" name="sql_adjustments_action" value="">
             </form>
         </div>
     </div>
 </div>
 
 <script>
-// Función para confirmar y ejecutar acciones SQL
-function confirmSQLAction(action, actionName, description) {
-    // Crear modal de confirmación personalizado
-    const modalHtml = `
+    // Función para confirmar y ejecutar acciones SQL
+    function confirmSQLAction(action, actionName, description) {
+        // Crear modal de confirmación personalizado
+        const modalHtml = `
         <div class="modal fade" id="confirmSQLModal" tabindex="-1" aria-labelledby="confirmSQLModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header bg-success text-white">
                         <h5 class="modal-title" id="confirmSQLModalLabel">
-                            <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Ajuste SQL
+                            <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Ajustes SQL
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
@@ -168,15 +128,32 @@ function confirmSQLAction(action, actionName, description) {
                             </h6>
                             <p class="mb-0">${description}</p>
                         </div>
-                        <p><strong>¿Está seguro de que desea ejecutar este ajuste SQL?</strong></p>
-                        <p class="text-muted small">Esta acción modificará registros en la base de datos y no se puede deshacer fácilmente.</p>
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-list me-2"></i>Se ejecutarán las siguientes operaciones:
+                            </h6>
+                            <ol class="mb-0 small">
+                                <li>Actualizar BoxType = 'CTB' para clientes Ipanema</li>
+                                <li>Resetear svfactores = '0' para todos los registros</li>
+                                <li>Establecer svfactores = '1' donde ShipVia contenga "Warehouse"</li>
+                                <li>Forzar svfactores = '0' para clientes Ipanema</li>
+                                <li>Forzar svfactores = '0' para clientes Global Rose</li>
+                                <li>Clasificar American Business como "Wholesale" (TotalPrice > TotalCost)</li>
+                                <li>Clasificar American Business como "Local" (TotalPrice ≤ TotalCost)</li>
+                            </ol>
+                        </div>
+                        <p><strong>¿Está seguro de que desea ejecutar todos estos ajustes SQL?</strong></p>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Advertencia:</strong> Esta acción modificará múltiples registros en la base de datos y no se puede deshacer fácilmente.
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="fas fa-times me-2"></i>Cancelar
                         </button>
                         <button type="button" class="btn btn-success" onclick="executeSQLAction('${action}')">
-                            <i class="fas fa-check me-2"></i>Ejecutar Ajuste
+                            <i class="fas fa-check me-2"></i>Ejecutar Ajustes
                         </button>
                     </div>
                 </div>
@@ -184,76 +161,63 @@ function confirmSQLAction(action, actionName, description) {
         </div>
     `;
 
-    // Remover modal existente si lo hay
-    const existingModal = document.getElementById('confirmSQLModal');
-    if (existingModal) {
-        existingModal.remove();
+        // Remover modal existente si lo hay
+        const existingModal = document.getElementById('confirmSQLModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Agregar modal al DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('confirmSQLModal'));
+        modal.show();
+
+        // Limpiar modal cuando se cierre
+        document.getElementById('confirmSQLModal').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
     }
 
-    // Agregar modal al DOM
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    // Función para ejecutar la acción SQL
+    function executeSQLAction(action) {
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmSQLModal'));
+        if (modal) {
+            modal.hide();
+        }
 
-    // Mostrar modal
-    const modal = new bootstrap.Modal(document.getElementById('confirmSQLModal'));
-    modal.show();
+        // Deshabilitar botón y mostrar loading
+        const button = document.getElementById('sqlAdjustmentsBtn');
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Ejecutando ajustes...';
 
-    // Limpiar modal cuando se cierre
-    document.getElementById('confirmSQLModal').addEventListener('hidden.bs.modal', function() {
-        this.remove();
+        // Limpiar campo oculto y establecer valor
+        document.getElementById('hiddenSQLAdjustmentsBtn').value = '';
+        document.getElementById('hiddenSQLAdjustmentsBtn').value = '1';
+
+        // Debug
+        console.log('Ejecutando ajustes SQL...');
+        console.log('sql_adjustments_action value:', document.getElementById('hiddenSQLAdjustmentsBtn').value);
+
+        // Breve delay para asegurar que los valores se establecieron
+        setTimeout(function() {
+            document.getElementById('sqlAdjustmentsForm').submit();
+        }, 100);
+    }
+
+    // Restaurar botón después de carga de página
+    document.addEventListener('DOMContentLoaded', function() {
+        // Restaurar estado del botón
+        const sqlAdjustmentsBtn = document.getElementById('sqlAdjustmentsBtn');
+
+        if (sqlAdjustmentsBtn) {
+            sqlAdjustmentsBtn.disabled = false;
+            sqlAdjustmentsBtn.innerHTML = '<i class="fa-solid fa-database me-2"></i>Ajustes SQL';
+        }
+
+        // Limpiar campo oculto al cargar
+        document.getElementById('hiddenSQLAdjustmentsBtn').value = '';
     });
-}
-
-// Función para ejecutar la acción SQL
-function executeSQLAction(action) {
-    // Cerrar modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmSQLModal'));
-    modal.hide();
-
-    // Deshabilitar botones y mostrar loading
-    const buttons = ['svfactorsBtn', 'ctbBtn', 'dumpBtn'];
-    buttons.forEach(btnId => {
-        const btn = document.getElementById(btnId);
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
-    });
-
-    // Ejecutar la acción correspondiente
-    switch (action) {
-        case 'svfactors':
-            document.getElementById('hiddenSVFactorsBtn').value = '1';
-            break;
-        case 'ctb':
-            document.getElementById('hiddenCTBBtn').value = '1';
-            break;
-        case 'dump':
-            document.getElementById('hiddenDumpBtn').value = '1';
-            break;
-    }
-
-    // Enviar formulario
-    document.getElementById('sqlAdjustmentsForm').submit();
-}
-
-// Restaurar botones si hay error (se ejecuta después de la carga de página)
-document.addEventListener('DOMContentLoaded', function() {
-    // Restaurar estado de botones
-    const svfactorsBtn = document.getElementById('svfactorsBtn');
-    const ctbBtn = document.getElementById('ctbBtn');
-    const dumpBtn = document.getElementById('dumpBtn');
-
-    if (svfactorsBtn) {
-        svfactorsBtn.disabled = false;
-        svfactorsBtn.innerHTML = '<i class="fa-solid fa-calculator me-2"></i>SVFactors';
-    }
-
-    if (ctbBtn) {
-        ctbBtn.disabled = false;
-        ctbBtn.innerHTML = '<i class="fa-solid fa-box me-2"></i>CTB';
-    }
-
-    if (dumpBtn) {
-        dumpBtn.disabled = false;
-        dumpBtn.innerHTML = '<i class="fa-solid fa-trash me-2"></i>Dump';
-    }
-});
 </script>

@@ -25,7 +25,7 @@
                 <div class="mb-3">
                     <label for="datadate" class="form-label">
                         <i class="fas fa-calendar-alt me-2"></i>Escoja La Fecha
-                        De Los Datos (Mes/Dia/Año)
+                        De Los Datos (Mes/Día/Año)
                     </label>
                     <input class="form-control" type="date" id="datadate" name="datadate"
                         value="<?php echo htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8'); ?>" required>
@@ -38,10 +38,10 @@
 
                 <!-- Mensajes de resultado -->
                 <?php if ($message): ?>
-                <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-                    <?php echo $message; ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                    <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+                        <?php echo $message; ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 <?php endif; ?>
 
                 <!-- Botones de acción -->
@@ -62,21 +62,21 @@
                 </div>
 
                 <!-- Botones ocultos para envío real del formulario -->
-                <input type="hidden" id="hiddenSalesBtn" name="prepare_sales">
-                <input type="hidden" id="hiddenCreditsBtn" name="prepare_credits">
+                <input type="hidden" id="hiddenSalesBtn" name="prepare_sales" value="">
+                <input type="hidden" id="hiddenCreditsBtn" name="prepare_credits" value="">
             </form>
         </div>
     </div>
 </div>
 
 <script>
-// Función para confirmar y ejecutar acciones de preparación
-function confirmPreparationAction(action, actionName, description) {
-    // Validar que se haya seleccionado una fecha
-    const dateInput = document.getElementById('datadate');
-    if (!dateInput.value) {
-        // Crear modal de error
-        const errorModalHtml = `
+    // Función para confirmar y ejecutar acciones de preparación
+    function confirmPreparationAction(action, actionName, description) {
+        // Validar que se haya seleccionado una fecha
+        const dateInput = document.getElementById('datadate');
+        if (!dateInput.value) {
+            // Crear modal de error
+            const errorModalHtml = `
             <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
                 <div class="modal-dialog">
                     <div class="modal-content">
@@ -105,38 +105,38 @@ function confirmPreparationAction(action, actionName, description) {
             </div>
         `;
 
-        // Remover modal existente si lo hay
-        const existingModal = document.getElementById('errorModal');
-        if (existingModal) {
-            existingModal.remove();
+            // Remover modal existente si lo hay
+            const existingModal = document.getElementById('errorModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // Agregar modal al DOM
+            document.body.insertAdjacentHTML('beforeend', errorModalHtml);
+
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('errorModal'));
+            modal.show();
+
+            // Limpiar modal cuando se cierre y enfocar el campo de fecha
+            document.getElementById('errorModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+                dateInput.focus();
+            });
+
+            return;
         }
 
-        // Agregar modal al DOM
-        document.body.insertAdjacentHTML('beforeend', errorModalHtml);
-
-        // Mostrar modal
-        const modal = new bootstrap.Modal(document.getElementById('errorModal'));
-        modal.show();
-
-        // Limpiar modal cuando se cierre y enfocar el campo de fecha
-        document.getElementById('errorModal').addEventListener('hidden.bs.modal', function() {
-            this.remove();
-            dateInput.focus();
+        // Formatear la fecha para mostrar
+        const selectedDate = new Date(dateInput.value);
+        const formattedDate = selectedDate.toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         });
 
-        return;
-    }
-
-    // Formatear la fecha para mostrar
-    const selectedDate = new Date(dateInput.value);
-    const formattedDate = selectedDate.toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-
-    // Crear modal de confirmación personalizado
-    const modalHtml = `
+        // Crear modal de confirmación personalizado
+        const modalHtml = `
         <div class="modal fade" id="confirmPreparationModal" tabindex="-1" aria-labelledby="confirmPreparationModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -176,67 +176,99 @@ function confirmPreparationAction(action, actionName, description) {
         </div>
     `;
 
-    // Remover modal existente si lo hay
-    const existingModal = document.getElementById('confirmPreparationModal');
-    if (existingModal) {
-        existingModal.remove();
+        // Remover modal existente si lo hay
+        const existingModal = document.getElementById('confirmPreparationModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Agregar modal al DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('confirmPreparationModal'));
+        modal.show();
+
+        // Limpiar modal cuando se cierre
+        document.getElementById('confirmPreparationModal').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
     }
 
-    // Agregar modal al DOM
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    // Función para ejecutar la acción de preparación
+    function executePreparationAction(action) {
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmPreparationModal'));
+        if (modal) {
+            modal.hide();
+        }
 
-    // Mostrar modal
-    const modal = new bootstrap.Modal(document.getElementById('confirmPreparationModal'));
-    modal.show();
+        // CRÍTICO: Limpiar TODOS los campos ocultos primero
+        document.getElementById('hiddenSalesBtn').value = '';
+        document.getElementById('hiddenCreditsBtn').value = '';
 
-    // Limpiar modal cuando se cierre
-    document.getElementById('confirmPreparationModal').addEventListener('hidden.bs.modal', function() {
-        this.remove();
-    });
-}
+        // Solo deshabilitar el botón específico, no todos
+        let currentButton;
+        let otherButton;
 
-// Función para ejecutar la acción de preparación
-function executePreparationAction(action) {
-    // Cerrar modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmPreparationModal'));
-    modal.hide();
-
-    // Deshabilitar botones y mostrar loading
-    const buttons = ['prepareSalesBtn', 'prepareCreditsBtn'];
-    buttons.forEach(btnId => {
-        const btn = document.getElementById(btnId);
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
-    });
-
-    // Ejecutar la acción correspondiente
-    switch (action) {
-        case 'sales':
+        if (action === 'sales') {
+            currentButton = document.getElementById('prepareSalesBtn');
+            otherButton = document.getElementById('prepareCreditsBtn');
+            // Establecer valor SOLO para sales
             document.getElementById('hiddenSalesBtn').value = '1';
-            break;
-        case 'credits':
+        } else if (action === 'credits') {
+            currentButton = document.getElementById('prepareCreditsBtn');
+            otherButton = document.getElementById('prepareSalesBtn');
+            // Establecer valor SOLO para credits
             document.getElementById('hiddenCreditsBtn').value = '1';
-            break;
+        }
+
+        // Deshabilitar solo el botón actual y mostrar loading
+        if (currentButton) {
+            currentButton.disabled = true;
+            currentButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
+        }
+
+        // Mantener el otro botón habilitado pero visualmente deshabilitado temporalmente
+        if (otherButton) {
+            otherButton.style.opacity = '0.6';
+            otherButton.style.pointerEvents = 'none';
+        }
+
+        // Debug: Verificar valores antes del envío
+        console.log('Acción seleccionada:', action);
+        console.log('prepare_sales value:', document.getElementById('hiddenSalesBtn').value);
+        console.log('prepare_credits value:', document.getElementById('hiddenCreditsBtn').value);
+        console.log('Fecha seleccionada:', document.getElementById('datadate').value);
+
+        // Breve delay para asegurar que los valores se establecieron
+        setTimeout(function() {
+            document.getElementById('preparationForm').submit();
+        }, 100);
     }
 
-    // Enviar formulario
-    document.getElementById('preparationForm').submit();
-}
+    // Restaurar botones después de carga de página
+    document.addEventListener('DOMContentLoaded', function() {
+        // Restaurar estado de botones
+        const prepareSalesBtn = document.getElementById('prepareSalesBtn');
+        const prepareCreditsBtn = document.getElementById('prepareCreditsBtn');
 
-// Restaurar botones si hay error (se ejecuta después de la carga de página)
-document.addEventListener('DOMContentLoaded', function() {
-    // Restaurar estado de botones
-    const prepareSalesBtn = document.getElementById('prepareSalesBtn');
-    const prepareCreditsBtn = document.getElementById('prepareCreditsBtn');
+        if (prepareSalesBtn) {
+            prepareSalesBtn.disabled = false;
+            prepareSalesBtn.style.opacity = '1';
+            prepareSalesBtn.style.pointerEvents = 'auto';
+            prepareSalesBtn.innerHTML = '<i class="fa-solid fa-sack-dollar me-2"></i>Prepare Sales';
+        }
 
-    if (prepareSalesBtn) {
-        prepareSalesBtn.disabled = false;
-        prepareSalesBtn.innerHTML = '<i class="fa-solid fa-sack-dollar me-2"></i>Prepare Sales';
-    }
+        if (prepareCreditsBtn) {
+            prepareCreditsBtn.disabled = false;
+            prepareCreditsBtn.style.opacity = '1';
+            prepareCreditsBtn.style.pointerEvents = 'auto';
+            prepareCreditsBtn.innerHTML = '<i class="fa-solid fa-hand-holding-dollar me-2"></i>Prepare Credits';
+        }
 
-    if (prepareCreditsBtn) {
-        prepareCreditsBtn.disabled = false;
-        prepareCreditsBtn.innerHTML = '<i class="fa-solid fa-hand-holding-dollar me-2"></i>Prepare Credits';
-    }
-});
+        // Limpiar campos ocultos al cargar
+        document.getElementById('hiddenSalesBtn').value = '';
+        document.getElementById('hiddenCreditsBtn').value = '';
+    });
 </script>
