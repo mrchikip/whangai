@@ -83,10 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <!-- Mensajes de resultado -->
                 <?php if ($sqlMessage): ?>
-                    <div class="alert alert-<?php echo $sqlMessageType; ?> alert-dismissible fade show" role="alert">
-                        <?php echo $sqlMessage; ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <div class="alert alert-<?php echo $sqlMessageType; ?> alert-dismissible fade show" role="alert">
+                    <?php echo $sqlMessage; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
                 <?php endif; ?>
 
                 <!-- Botón de acción -->
@@ -108,10 +108,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-    // Función para confirmar y ejecutar acciones SQL
-    function confirmSQLAction(action, actionName, description) {
-        // Crear modal de confirmación personalizado
-        const modalHtml = `
+// Función para confirmar y ejecutar acciones SQL
+function confirmSQLAction(action, actionName, description) {
+    // Crear modal de confirmación personalizado
+    const modalHtml = `
         <div class="modal fade" id="confirmSQLModal" tabindex="-1" aria-labelledby="confirmSQLModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -161,63 +161,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     `;
 
-        // Remover modal existente si lo hay
-        const existingModal = document.getElementById('confirmSQLModal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-
-        // Agregar modal al DOM
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-        // Mostrar modal
-        const modal = new bootstrap.Modal(document.getElementById('confirmSQLModal'));
-        modal.show();
-
-        // Limpiar modal cuando se cierre
-        document.getElementById('confirmSQLModal').addEventListener('hidden.bs.modal', function() {
-            this.remove();
-        });
+    // Remover modal existente si lo hay
+    const existingModal = document.getElementById('confirmSQLModal');
+    if (existingModal) {
+        existingModal.remove();
     }
 
-    // Función para ejecutar la acción SQL
-    function executeSQLAction(action) {
-        // Cerrar modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmSQLModal'));
-        if (modal) {
-            modal.hide();
-        }
+    // Agregar modal al DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-        // Deshabilitar botón y mostrar loading
-        const button = document.getElementById('sqlAdjustmentsBtn');
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Ejecutando ajustes...';
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('confirmSQLModal'));
+    modal.show();
 
-        // Limpiar campo oculto y establecer valor
-        document.getElementById('hiddenSQLAdjustmentsBtn').value = '';
-        document.getElementById('hiddenSQLAdjustmentsBtn').value = '1';
-
-        // Debug
-        console.log('Ejecutando ajustes SQL...');
-        console.log('sql_adjustments_action value:', document.getElementById('hiddenSQLAdjustmentsBtn').value);
-
-        // Breve delay para asegurar que los valores se establecieron
-        setTimeout(function() {
-            document.getElementById('sqlAdjustmentsForm').submit();
-        }, 100);
-    }
-
-    // Restaurar botón después de carga de página
-    document.addEventListener('DOMContentLoaded', function() {
-        // Restaurar estado del botón
-        const sqlAdjustmentsBtn = document.getElementById('sqlAdjustmentsBtn');
-
-        if (sqlAdjustmentsBtn) {
-            sqlAdjustmentsBtn.disabled = false;
-            sqlAdjustmentsBtn.innerHTML = '<i class="fa-solid fa-database me-2"></i>Ajustes SQL';
-        }
-
-        // Limpiar campo oculto al cargar
-        document.getElementById('hiddenSQLAdjustmentsBtn').value = '';
+    // Limpiar modal cuando se cierre
+    document.getElementById('confirmSQLModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
     });
+}
+
+// Función para ejecutar la acción SQL
+function executeSQLAction(action) {
+    // Cerrar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmSQLModal'));
+    if (modal) {
+        modal.hide();
+    }
+
+    // Deshabilitar botón y mostrar loading
+    const button = document.getElementById('sqlAdjustmentsBtn');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Ejecutando ajustes...';
+
+    // Limpiar campo oculto y establecer valor
+    document.getElementById('hiddenSQLAdjustmentsBtn').value = '';
+    document.getElementById('hiddenSQLAdjustmentsBtn').value = '1';
+
+    // Debug
+    console.log('Ejecutando ajustes SQL...');
+    console.log('sql_adjustments_action value:', document.getElementById('hiddenSQLAdjustmentsBtn').value);
+
+    // Breve delay para asegurar que los valores se establecieron
+    setTimeout(function() {
+        document.getElementById('sqlAdjustmentsForm').submit();
+    }, 100);
+}
+
+// Restaurar botón después de carga de página
+document.addEventListener('DOMContentLoaded', function() {
+    // Restaurar estado del botón
+    const sqlAdjustmentsBtn = document.getElementById('sqlAdjustmentsBtn');
+
+    if (sqlAdjustmentsBtn) {
+        sqlAdjustmentsBtn.disabled = false;
+        sqlAdjustmentsBtn.innerHTML = '<i class="fa-solid fa-database me-2"></i>Ajustes SQL';
+    }
+
+    // Limpiar campo oculto al cargar
+    document.getElementById('hiddenSQLAdjustmentsBtn').value = '';
+});
 </script>
