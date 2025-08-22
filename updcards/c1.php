@@ -15,60 +15,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (isset($_POST['datadate']) && !empty($_POST['datadate'])) {
             $c1_selectedDate = $_POST['datadate'];
 
-            try {
-                // Verificar conexion a la base de datos
-                if (!$conn2) {
-                    throw new Exception('Error de conexion a la base de datos');
-                }
+            // Validación adicional en el servidor: no permitir fechas futuras
+            $selectedDateTime = strtotime($c1_selectedDate);
+            $todayDateTime = strtotime(date('Y-m-d'));
 
-                mysqli_set_charset($conn2, 'utf8');
-
-                // Procesar accion de preparar sales
-                if (!empty($_POST['prepare_sales'])) {
-                    $deleteQuery = "DELETE FROM `sales` WHERE `InvoiceDate` >= ?";
-                    $stmt = $conn2->prepare($deleteQuery);
-
-                    if (!$stmt) {
-                        throw new Exception('Error preparando la consulta de sales: ' . $conn2->error);
-                    }
-
-                    $stmt->bind_param("s", $c1_selectedDate);
-
-                    if ($stmt->execute()) {
-                        $affectedRows = $stmt->affected_rows;
-                        $c1_message = "Preparacion de Sales completada exitosamente. $affectedRows registros eliminados desde la fecha $c1_selectedDate.";
-                        $c1_messageType = 'success';
-                    } else {
-                        throw new Exception('Error ejecutando eliminacion de sales: ' . $stmt->error);
-                    }
-
-                    $stmt->close();
-                }
-                // Procesar accion de preparar credits
-                elseif (!empty($_POST['prepare_credits'])) {
-                    $deleteQuery = "DELETE FROM `credits` WHERE `CreditDate` >= ?";
-                    $stmt = $conn2->prepare($deleteQuery);
-
-                    if (!$stmt) {
-                        throw new Exception('Error preparando la consulta de credits: ' . $conn2->error);
-                    }
-
-                    $stmt->bind_param("s", $c1_selectedDate);
-
-                    if ($stmt->execute()) {
-                        $affectedRows = $stmt->affected_rows;
-                        $c1_message = "Preparacion de Credits completada exitosamente. $affectedRows registros eliminados desde la fecha $c1_selectedDate.";
-                        $c1_messageType = 'success';
-                    } else {
-                        throw new Exception('Error ejecutando eliminacion de credits: ' . $stmt->error);
-                    }
-
-                    $stmt->close();
-                }
-            } catch (Exception $e) {
-                error_log("Error en c1.php: " . $e->getMessage());
-                $c1_message = 'Error: ' . $e->getMessage();
+            if ($selectedDateTime > $todayDateTime) {
+                $c1_message = 'Error: No se puede seleccionar una fecha futura. La fecha máxima permitida es hoy.';
                 $c1_messageType = 'danger';
+            } else {
+                try {
+                    // Verificar conexion a la base de datos
+                    if (!$conn2) {
+                        throw new Exception('Error de conexion a la base de datos');
+                    }
+
+                    mysqli_set_charset($conn2, 'utf8');
+
+                    // Procesar accion de preparar sales
+                    if (!empty($_POST['prepare_sales'])) {
+                        $deleteQuery = "DELETE FROM `sales` WHERE `InvoiceDate` >= ?";
+                        $stmt = $conn2->prepare($deleteQuery);
+
+                        if (!$stmt) {
+                            throw new Exception('Error preparando la consulta de sales: ' . $conn2->error);
+                        }
+
+                        $stmt->bind_param("s", $c1_selectedDate);
+
+                        if ($stmt->execute()) {
+                            $affectedRows = $stmt->affected_rows;
+                            $c1_message = "Preparacion de Sales completada exitosamente. $affectedRows registros eliminados desde la fecha $c1_selectedDate.";
+                            $c1_messageType = 'success';
+                        } else {
+                            throw new Exception('Error ejecutando eliminacion de sales: ' . $stmt->error);
+                        }
+
+                        $stmt->close();
+                    }
+                    // Procesar accion de preparar credits
+                    elseif (!empty($_POST['prepare_credits'])) {
+                        $deleteQuery = "DELETE FROM `credits` WHERE `CreditDate` >= ?";
+                        $stmt = $conn2->prepare($deleteQuery);
+
+                        if (!$stmt) {
+                            throw new Exception('Error preparando la consulta de credits: ' . $conn2->error);
+                        }
+
+                        $stmt->bind_param("s", $c1_selectedDate);
+
+                        if ($stmt->execute()) {
+                            $affectedRows = $stmt->affected_rows;
+                            $c1_message = "Preparacion de Credits completada exitosamente. $affectedRows registros eliminados desde la fecha $c1_selectedDate.";
+                            $c1_messageType = 'success';
+                        } else {
+                            throw new Exception('Error ejecutando eliminacion de credits: ' . $stmt->error);
+                        }
+
+                        $stmt->close();
+                    }
+                } catch (Exception $e) {
+                    error_log("Error en c1.php: " . $e->getMessage());
+                    $c1_message = 'Error: ' . $e->getMessage();
+                    $c1_messageType = 'danger';
+                }
             }
         } else {
             $c1_message = 'Debe seleccionar una fecha.';
@@ -107,11 +116,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         De Los Datos (Mes/Dia/Ano)
                     </label>
                     <input class="form-control" type="date" id="datadate" name="datadate"
-                        value="<?php echo htmlspecialchars($c1_selectedDate, ENT_QUOTES, 'UTF-8'); ?>" required>
+                        value="<?php echo htmlspecialchars($c1_selectedDate, ENT_QUOTES, 'UTF-8'); ?>"
+                        max="<?php echo date('Y-m-d'); ?>" required>
                     <div class="form-text">
                         <i class="fas fa-info-circle text-info me-1"></i>
                         Se eliminaran todos los registros desde esta fecha en
-                        adelante
+                        adelante. Fecha máxima: <?php echo date('d/m/Y'); ?>
                     </div>
                 </div>
 
@@ -158,13 +168,15 @@ function confirmPreparationAction(action, actionName, description) {
         return;
     }
 
-    // Validar que la fecha no sea futura
-    const selectedDate = new Date(dateInput.value);
+    // Validación más estricta de fechas futuras
+    const selectedDate = new Date(dateInput.value + 'T00:00:00'); // Forzar timezone local
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // Resetear horas para comparación exacta
 
     if (selectedDate > today) {
-        showErrorModal('Fecha Invalida', 'No se puede seleccionar una fecha futura.');
+        showErrorModal('Fecha Invalida',
+            'No se puede seleccionar una fecha futura. La fecha máxima permitida es hoy (' + today
+            .toLocaleDateString('es-ES') + ').');
         return;
     }
 
@@ -375,8 +387,45 @@ function setButtonsLoadingState(loading) {
     });
 }
 
+// Validación adicional en tiempo real del input de fecha
+function setupDateValidation() {
+    const dateInput = document.getElementById('datadate');
+    const today = new Date().toISOString().split('T')[0];
+
+    // Establecer max attribute dinámicamente por si acaso
+    dateInput.setAttribute('max', today);
+
+    // Validación en tiempo real cuando el usuario cambia la fecha
+    dateInput.addEventListener('change', function() {
+        const selectedDate = new Date(this.value + 'T00:00:00');
+        const todayDate = new Date();
+        todayDate.setHours(0, 0, 0, 0);
+
+        if (selectedDate > todayDate) {
+            showErrorModal('Fecha Invalida',
+                'No se puede seleccionar una fecha futura. La fecha máxima permitida es hoy (' + todayDate
+                .toLocaleDateString('es-ES') + ').');
+            this.value = today; // Resetear a hoy
+        }
+    });
+
+    // Validación adicional en el evento input (para navegadores que no respetan max)
+    dateInput.addEventListener('input', function() {
+        const selectedDate = new Date(this.value + 'T00:00:00');
+        const todayDate = new Date();
+        todayDate.setHours(0, 0, 0, 0);
+
+        if (selectedDate > todayDate) {
+            this.value = today; // Resetear a hoy inmediatamente
+        }
+    });
+}
+
 // Restaurar botones cuando se carga la pagina
 document.addEventListener('DOMContentLoaded', function() {
+    // Configurar validación de fechas
+    setupDateValidation();
+
     // Restaurar estado de botones
     const prepareSalesBtn = document.getElementById('prepareSalesBtn');
     const prepareCreditsBtn = document.getElementById('prepareCreditsBtn');

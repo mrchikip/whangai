@@ -107,6 +107,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
+<!-- Modal de carga durante ejecución SQL -->
+<div class="modal fade" id="sqlLoadingModal" tabindex="-1" aria-labelledby="sqlLoadingModalLabel" aria-hidden="true"
+    data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="sqlLoadingModalLabel">
+                    <i class="fas fa-database me-2"></i>Ejecutando Ajustes SQL
+                </h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <div class="spinner-border text-success" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+                <h5 class="text-success mb-3">Se están ejecutando los ajustes solicitados</h5>
+                <p class="mb-3">Este proceso puede tardar un poco, por favor espere...</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>¡IMPORTANTE!</strong> NO recargue la página ni cierre el navegador durante este proceso.
+                </div>
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar"
+                        style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                        Procesando...
+                    </div>
+                </div>
+                <small class="text-muted">
+                    <i class="fas fa-clock me-1"></i>
+                    Tiempo estimado: 30-60 segundos
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // Función para confirmar y ejecutar acciones SQL
 function confirmSQLAction(action, actionName, description) {
@@ -182,16 +219,56 @@ function confirmSQLAction(action, actionName, description) {
 
 // Función para ejecutar la acción SQL
 function executeSQLAction(action) {
-    // Cerrar modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmSQLModal'));
-    if (modal) {
-        modal.hide();
+    // Cerrar modal de confirmación
+    const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmSQLModal'));
+    if (confirmModal) {
+        confirmModal.hide();
     }
+
+    // Mostrar modal de carga inmediatamente y guardarlo en sessionStorage
+    const loadingModal = new bootstrap.Modal(document.getElementById('sqlLoadingModal'));
+    loadingModal.show();
+
+    // Marcar que estamos ejecutando SQL para mostrar el modal después de la recarga
+    sessionStorage.setItem('sqlExecuting', 'true');
+    sessionStorage.setItem('sqlStartTime', Date.now().toString());
 
     // Deshabilitar botón y mostrar loading
     const button = document.getElementById('sqlAdjustmentsBtn');
     button.disabled = true;
     button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Ejecutando ajustes...';
+
+    // Ocultar todo el contenido principal y mostrar pantalla de carga
+    document.getElementById('main-content').style.display = 'none';
+    document.getElementById('loading-message').style.display = 'block';
+
+    // Actualizar el mensaje de carga
+    const loadingContent = document.querySelector('.auth-loading-content');
+    if (loadingContent) {
+        loadingContent.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-success mb-3" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <h3 class="text-success">Ejecutando Ajustes SQL</h3>
+                <p>Se están ejecutando los ajustes solicitados...</p>
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>¡IMPORTANTE!</strong> NO recargue la página ni cierre el navegador.
+                </div>
+                <div class="progress mt-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                         role="progressbar" style="width: 100%">
+                        Procesando consultas SQL...
+                    </div>
+                </div>
+                <small class="text-muted mt-2 d-block">
+                    <i class="fas fa-clock me-1"></i>
+                    Este proceso puede tardar varios minutos
+                </small>
+            </div>
+        `;
+    }
 
     // Limpiar campo oculto y establecer valor
     document.getElementById('hiddenSQLAdjustmentsBtn').value = '';
@@ -201,7 +278,7 @@ function executeSQLAction(action) {
     console.log('Ejecutando ajustes SQL...');
     console.log('sql_adjustments_action value:', document.getElementById('hiddenSQLAdjustmentsBtn').value);
 
-    // Breve delay para asegurar que los valores se establecieron
+    // Enviar formulario después de configurar todo
     setTimeout(function() {
         document.getElementById('sqlAdjustmentsForm').submit();
     }, 100);
@@ -209,6 +286,78 @@ function executeSQLAction(action) {
 
 // Restaurar botón después de carga de página
 document.addEventListener('DOMContentLoaded', function() {
+    // Verificar si estamos regresando de una ejecución SQL
+    const sqlExecuting = sessionStorage.getItem('sqlExecuting');
+
+    if (sqlExecuting === 'true') {
+        // Mostrar pantalla de carga mientras se procesa
+        document.getElementById('main-content').style.display = 'none';
+        document.getElementById('loading-message').style.display = 'block';
+
+        // Actualizar el mensaje de carga
+        const loadingContent = document.querySelector('.auth-loading-content');
+        if (loadingContent) {
+            const startTime = parseInt(sessionStorage.getItem('sqlStartTime') || '0');
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
+            loadingContent.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-success mb-3" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <h3 class="text-success">Ejecutando Ajustes SQL</h3>
+                    <p>Se están ejecutando los ajustes solicitados...</p>
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>¡IMPORTANTE!</strong> NO recargue la página ni cierre el navegador.
+                    </div>
+                    <div class="progress mt-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                             role="progressbar" style="width: 100%">
+                            Procesando consultas SQL...
+                        </div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">
+                        <i class="fas fa-clock me-1"></i>
+                        Tiempo transcurrido: ${elapsed} segundos
+                    </small>
+                </div>
+            `;
+        }
+
+        // Verificar cada segundo si el proceso terminó
+        const checkCompletion = setInterval(function() {
+            // Si hay un mensaje de éxito o error en la página, el proceso terminó
+            const alerts = document.querySelectorAll('.alert-success, .alert-danger');
+
+            if (alerts.length > 0) {
+                // Limpiar sessionStorage
+                sessionStorage.removeItem('sqlExecuting');
+                sessionStorage.removeItem('sqlStartTime');
+
+                // Mostrar el contenido principal
+                document.getElementById('loading-message').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+
+                clearInterval(checkCompletion);
+            }
+        }, 1000);
+
+        // Fallback: después de 5 minutos, mostrar contenido de todos modos
+        setTimeout(function() {
+            sessionStorage.removeItem('sqlExecuting');
+            sessionStorage.removeItem('sqlStartTime');
+            document.getElementById('loading-message').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            clearInterval(checkCompletion);
+        }, 300000); // 5 minutos
+
+    } else {
+        // Funcionamiento normal
+        document.getElementById('loading-message').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+    }
+
     // Restaurar estado del botón
     const sqlAdjustmentsBtn = document.getElementById('sqlAdjustmentsBtn');
 
@@ -218,6 +367,34 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Limpiar campo oculto al cargar
-    document.getElementById('hiddenSQLAdjustmentsBtn').value = '';
+    if (document.getElementById('hiddenSQLAdjustmentsBtn')) {
+        document.getElementById('hiddenSQLAdjustmentsBtn').value = '';
+    }
+
+    // Ocultar modal de carga si la página se recargó después del proceso
+    const loadingModal = document.getElementById('sqlLoadingModal');
+    if (loadingModal) {
+        const modalInstance = bootstrap.Modal.getInstance(loadingModal);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+    }
+
+    // Auto-dismiss alerts after 8 seconds
+    const alerts = document.querySelectorAll('.alert:not(.alert-warning)');
+    alerts.forEach(alert => {
+        if (alert.classList.contains('alert-success') || alert.classList.contains('alert-danger')) {
+            setTimeout(() => {
+                if (alert && alert.parentNode) {
+                    alert.classList.remove('show');
+                    setTimeout(() => {
+                        if (alert.parentNode) {
+                            alert.remove();
+                        }
+                    }, 150);
+                }
+            }, 8000);
+        }
+    });
 });
 </script>

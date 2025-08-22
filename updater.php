@@ -35,7 +35,7 @@ include("includes/header.php");
 <div id="main-content" style="display: none;">
     <div class="container p-4">
         <div class="row">
-            <div class="col-md-4">
+            <div class="col-md-12">
                 <?php
                 // Muestra mensaje de alerta si existe en sesion
                 if (isset($_SESSION['message'])) { ?>
@@ -48,13 +48,18 @@ include("includes/header.php");
                     unset($_SESSION['message'], $_SESSION['message_type']);
                 } ?>
 
-                <!-- Rejilla principal de tarjetas -->
                 <div class="container mt-4">
-                    <div class="row justify-content-center align-items-stretch">
+                    <div class="row justify-content-center">
                         <div class="col-12">
-                            <div class="card shadow" style="width: 80vw; margin: 0 auto;">
+                            <div class="card shadow">
                                 <div class="card-body">
-                                    <div class="row justify-content-center align-items-stretch">
+                                    <!-- Título mejorado -->
+                                    <div class="text-center mb-4">
+                                        <h1 class="h2 fw-bold text-success mb-3">Actualización de Base de Datos</h1>
+                                        <p class="text-muted">Selecciona la herramienta que deseas utilizar</p>
+                                    </div>
+
+                                    <div class="row justify-content-center align-items-stretch g-4">
                                         <!-- Tarjeta 1: Fecha de Actualizacion -->
                                         <?php include("updcards/c1.php"); ?>
 
@@ -73,24 +78,25 @@ include("includes/header.php");
                                         <!-- Tarjeta 6: En Construccion -->
                                         <?php include("updcards/c6.php"); ?>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Boton de regreso -->
-                <div class="container mt-4">
-                    <div class="row justify-content-center align-items-stretch">
-                        <div class="col-12">
-                            <div class="card shadow" style="width: 80vw; margin: 0 auto;">
-                                <div class="card-body">
-                                    <div class="row justify-content-center align-items-stretch">
-                                        <button type="button" class="btn btn-success btn-lg w-100"
-                                            onclick="window.location.href='Landing.php'">
-                                            <i class="fas fa-circle-arrow-left me-2"></i>
-                                            Regresar
-                                        </button>
+                                    <!-- Botón de regreso -->
+                                    <div class="row justify-content-center mt-4">
+                                        <div class="col-lg-6 col-md-8 col-sm-12">
+                                            <button type="button" class="btn btn-success btn-lg w-100"
+                                                onclick="window.location.href='Landing.php'">
+                                                <i class="fas fa-circle-arrow-left me-2"></i>
+                                                Regresar al Panel Principal
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Información adicional -->
+                                    <div class="text-center mt-4">
+                                        <div class="alert alert-info" role="alert">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Consejo:</strong> Utiliza estas herramientas para mantener
+                                            tu base de datos siempre actualizada y optimizada.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -120,6 +126,21 @@ include("includes/header.php");
                     }, 150);
                 }
             }, 5000);
+        });
+
+        // Aplicar efectos de hover mejorado a las cards (igual que en landing)
+        const cards = document.querySelectorAll('.card.h-100');
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                if (!this.querySelector('button[disabled]')) {
+                    this.style.transform = 'translateY(-4px) scale(1.02)';
+                    this.style.transition = 'all 0.3s ease';
+                }
+            });
+
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
         });
     });
 </script>
