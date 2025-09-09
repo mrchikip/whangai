@@ -785,10 +785,10 @@ include("includes/header.php");
 
                         <!-- Mensajes de resultado -->
                         <?php if ($message): ?>
-                        <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-                            <?php echo $message; ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
+                            <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+                                <?php echo $message; ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
                         <?php endif; ?>
 
                         <!-- Formulario de subida -->
@@ -831,99 +831,67 @@ include("includes/header.php");
                         </form>
                     </div>
                 </div>
-
-                <!-- Información técnica -->
-                <!-- <div class="card mt-3">
-                    <div class="card-body">
-                        <h6 class="card-title">
-                            <i class="fas fa-cogs me-2 text-success"></i>Soporte Técnico: Data Descriptors + Mapeo de Campos
-                        </h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <ul class="mb-0 small">
-                                    <li><strong>Mapeo automático:</strong> XLSX headers → DB fields</li>
-                                    <li><strong>Data descriptors:</strong> Lee flags 0x08 para tamaños</li>
-                                    <li><strong>Validación de campos:</strong> Verifica campos requeridos</li>
-                                    <li><strong>Búsqueda de descriptors:</strong> Encuentra PK\x07\x08</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <ul class="mb-0 small">
-                                    <li><strong>31 campos mapeados:</strong> Convierte nombres automáticamente</li>
-                                    <li><strong>Logs de mapeo:</strong> Muestra cada conversión</li>
-                                    <li><strong>Fallback robusto:</strong> Maneja campos faltantes</li>
-                                    <li><strong>Compatible:</strong> Con diferentes nombres de columnas</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <hr>
-                        <small class="text-muted">
-                            <strong>Mapeo de Campos:</strong> Esta versión lee automáticamente los encabezados de la fila 17 y los mapea
-                            a los nombres de la base de datos (ej: "Credit #" → "CreditNum"), resolviendo las diferencias de nomenclatura.
-                        </small>
-                    </div>
-                </div> -->
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// Proteger la página
-document.addEventListener('DOMContentLoaded', function() {
-    protectPage();
-});
+    // Proteger la página
+    document.addEventListener('DOMContentLoaded', function() {
+        protectPage();
+    });
 
-// Manejo del formulario de upload
-document.getElementById('uploadForm').addEventListener('submit', function() {
-    const submitBtn = document.getElementById('submitBtn');
-    const progressContainer = document.getElementById('progressContainer');
+    // Manejo del formulario de upload
+    document.getElementById('uploadForm').addEventListener('submit', function() {
+        const submitBtn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
 
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando XLSX con Mapeo de Campos...';
-    progressContainer.style.display = 'block';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando XLSX con Mapeo de Campos...';
+        progressContainer.style.display = 'block';
 
-    // Progreso optimista para la versión con mapeo
-    let progress = 0;
-    const interval = setInterval(function() {
-        progress += Math.random() * 18;
-        if (progress > 92) progress = 92;
-        document.getElementById('progressBar').style.width = progress + '%';
-    }, 180);
+        // Progreso optimista para la versión con mapeo
+        let progress = 0;
+        const interval = setInterval(function() {
+            progress += Math.random() * 18;
+            if (progress > 92) progress = 92;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }, 180);
 
-    // Limpiar el intervalo
-    setTimeout(function() {
-        clearInterval(interval);
-    }, 1200);
-});
+        // Limpiar el intervalo
+        setTimeout(function() {
+            clearInterval(interval);
+        }, 1200);
+    });
 
-// Validación del archivo en el cliente
-document.getElementById('xlsx_file').addEventListener('change', function() {
-    const file = this.files[0];
-    if (file) {
-        if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
-            alert('El archivo es demasiado grande. Máximo 10MB permitido.');
-            this.value = '';
-            return;
+    // Validación del archivo en el cliente
+    document.getElementById('xlsx_file').addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
+                alert('El archivo es demasiado grande. Máximo 10MB permitido.');
+                this.value = '';
+                return;
+            }
+
+            const fileName = file.name.toLowerCase();
+            if (!fileName.endsWith('.xlsx')) {
+                alert('Solo se permiten archivos XLSX.');
+                this.value = '';
+                return;
+            }
+
+            console.log('✅ Archivo XLSX seleccionado para parser con mapeo de campos:', fileName);
+            console.log('📊 Tamaño:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+
+            // Mostrar información positiva
+            const formText = document.querySelector('.form-text');
+            formText.innerHTML =
+                '<i class="fas fa-check-circle text-success me-1"></i>Archivo XLSX listo - Parser con mapeo de campos activado';
+            formText.className = 'form-text text-success';
         }
-
-        const fileName = file.name.toLowerCase();
-        if (!fileName.endsWith('.xlsx')) {
-            alert('Solo se permiten archivos XLSX.');
-            this.value = '';
-            return;
-        }
-
-        console.log('✅ Archivo XLSX seleccionado para parser con mapeo de campos:', fileName);
-        console.log('📊 Tamaño:', (file.size / 1024 / 1024).toFixed(2), 'MB');
-
-        // Mostrar información positiva
-        const formText = document.querySelector('.form-text');
-        formText.innerHTML =
-            '<i class="fas fa-check-circle text-success me-1"></i>Archivo XLSX listo - Parser con mapeo de campos activado';
-        formText.className = 'form-text text-success';
-    }
-});
+    });
 </script>
 
 <?php
