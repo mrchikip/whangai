@@ -1,5 +1,5 @@
 <?php
-// Incluye la conexión a la base de datos
+
 include("db.php");
 // Incluye la protección de autenticación de usuario
 include("includes/auth.php");
@@ -23,11 +23,11 @@ include("includes/header.php");
                 <?php
                 // Muestra mensaje de alerta si existe en sesión
                 if (isset($_SESSION['message'])) { ?>
-                    <div class="alert alert-<?= $_SESSION['message_type'] ?> alert-dismissible fade show" role="alert">
-                        <?= $_SESSION['message'] ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
-                        </button>
-                    </div>
+                <div class="alert alert-<?= $_SESSION['message_type'] ?> alert-dismissible fade show" role="alert">
+                    <?= $_SESSION['message'] ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                    </button>
+                </div>
                 <?php session_unset();
                 } ?>
 
@@ -73,21 +73,21 @@ include("includes/header.php");
                         }
                         // Muestra cada tarea en una fila de la tabla
                         while ($row = mysqli_fetch_array($result_tasks)) { ?>
-                            <tr>
-                                <td><?php echo $row['tittle'] ?></td>
-                                <td><?php echo $row['description'] ?></td>
-                                <td><?php echo $row['createdAt'] ?></td>
-                                <td>
-                                    <!-- Botón para editar la tarea -->
-                                    <a href="edit.php?id=<?php echo $row['id'] ?>" class="btn btn-secondary">
-                                        <i class="fas fa-marker"></i>
-                                    </a>
-                                    <!-- Botón para eliminar la tarea -->
-                                    <a href="delete_task.php?id=<?php echo $row['id'] ?>" class="btn btn-danger">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </a>
-                                </td>
-                            </tr>
+                        <tr>
+                            <td><?php echo $row['tittle'] ?></td>
+                            <td><?php echo $row['description'] ?></td>
+                            <td><?php echo $row['createdAt'] ?></td>
+                            <td>
+                                <!-- Botón para editar la tarea -->
+                                <a href="edit.php?id=<?php echo $row['id'] ?>" class="btn btn-secondary">
+                                    <i class="fas fa-marker"></i>
+                                </a>
+                                <!-- Botón para eliminar la tarea -->
+                                <a href="delete_task.php?id=<?php echo $row['id'] ?>" class="btn btn-danger">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                            </td>
+                        </tr>
                         <?php } ?>
                     </tbody>
                 </table>
@@ -97,10 +97,10 @@ include("includes/header.php");
 </div>
 
 <script>
-    // Al cargar create.php, proteger la página
-    document.addEventListener('DOMContentLoaded', function() {
-        protectPage();
-    });
+// Al cargar create.php, proteger la página
+document.addEventListener('DOMContentLoaded', function() {
+    protectPage();
+});
 </script>
 
 <?php
