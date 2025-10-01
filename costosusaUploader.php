@@ -1,15 +1,20 @@
 <?php
 // ==============================
-// costosusaUploader.php (XLSX sin ZipArchive)
+// costosusaUploader.php (XLSX sin ZipArchive) — USA
 // - Encabezados: SIEMPRE la fila 1 del archivo.
 // - Mapeo por nombre (sin tildes/espacios, case-insensitive).
 // - Todo vacío -> NULL.
-// - Fecha/Debito/Credito con conversión explícita.
-// - SIN escape HTML al insertar (texto idéntico al Excel).
-// - Fixes anti-corrimiento:
-//   * Centro_de_Costos con solo dígitos y Identificación vacío -> mover a Identificación.
-//   * prefijo con solo dígitos y Numero_Documento vacío -> mover a Numero_Documento.
-//   * Clasificacion con solo dígitos (3–8) y Codigo_Cuenta vacío -> mover a Codigo_Cuenta.
+// - Fecha: DD/MM/YYYY o serial Excel -> YYYY-MM-DD.
+// - Débito/Crédito: limpia moneda/miles; hasta 5 decimales.
+// - Texto: se guarda idéntico (sin htmlspecialchars).
+// - Fixes anti-corrimiento (orden de aplicación):
+//   (4a) Si Concepto parece "centro", Centro es ID (6–15) e Ident vacío:
+//        Concepto→Centro, Centro(ID)→Ident, Concepto=NULL.
+//   (1)  Si Centro es ID (6–15) e Ident vacío: Centro→Ident, Centro=NULL.
+//   (4b) Si Centro vacío, Ident vacío y Concepto es ID (6–15):
+//        Concepto(ID)→Ident, Concepto=NULL.
+//   (2)  Si prefijo son dígitos y Número vacío: prefijo→Número, prefijo=NULL.
+//   (3)  Si Clasificación son dígitos (3–8) y Código vacío: Clasificación→Código, Clasificación=NULL.
 // ==============================
 
 include("db.php");
@@ -88,12 +93,11 @@ function toDecimalOrNull($raw) {
     $s = (string)$raw;
     if (trim($s) === '') return null;
 
-    // 1.234.567,89 -> 1234567.89
+    // 1.234.567,89 -> 1234567.89 ; 1,234.56 -> 1234.56 ; quita espacios
     if (preg_match('/^\d{1,3}(\.\d{3})+,\d+$/', $s)) {
         $s = str_replace('.', '', $s);
         $s = str_replace(',', '.', $s);
     } else {
-        // 1,234.56 -> 1234.56 ; 6331.61 se queda igual
         $s = str_replace([' ', ','], ['', ''], $s);
     }
 
@@ -108,10 +112,9 @@ function toDecimalOrNull($raw) {
     return $s;
 }
 function toTextOrNull($raw) {
-    // Mantener EXACTAMENTE el texto del Excel. Solo detectar vacío (tras trim) para NULL.
     if ($raw === null) return null;
     $orig = (string)$raw;
-    return (trim($orig) === '') ? null : $orig; // no trim al valor guardado
+    return (trim($orig) === '') ? null : $orig; // SIN htmlspecialchars; se guarda idéntico
 }
 function isDigitsId($v){
     if ($v === null) return false;
@@ -126,13 +129,23 @@ function isDigitsGeneric($v){
 function isDigitsAccountCode($v){
     if ($v === null) return false;
     $t = preg_replace('/\s+/', '', (string)$v);
-    return preg_match('/^\d{3,8}$/', $t) === 1; // códigos de cuenta tipo 1110, 2230, etc.
+    return preg_match('/^\d{3,8}$/', $t) === 1; // p.ej. 1110, 720539, etc.
+}
+function looksLikeCentro($v){
+    if ($v === null) return false;
+    $s = trim((string)$v);
+    if ($s === '') return false;
+    if (isDigitsId($s)) return false; // un ID puro no es centro
+    if (preg_match('/^\d{1,3}(\.\d{1,3}){1,4}/', $s)) return true; // 001.032, 03.12, etc.
+    if (preg_match('/[A-Za-z]/', $s) && preg_match('/\d/', $s)) return true; // “001.032 MESO FINCA 2”
+    if (preg_match('/[A-Za-z]{3,}/', $s)) return true; // palabras (FINCA, FLETE, etc.)
+    return false;
 }
 
 // ---------- Lector XLSX sin ZipArchive ----------
 class XLSXLightReader {
     private $zipData;
-    private $entries = []; // nombre => ['pos'=>int,'comp'=>int,'method'=>int,'dd'=>bool]
+    private $entries = [];
     private $strings = [];
     private $sheetTargets = [];
 
@@ -343,7 +356,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
                     $sql="INSERT INTO `".DB_TABLE."` (".implode(',',DB_FIELDS).") VALUES ($place)";
                     $stmt=$conn2->prepare($sql);
                     if (!$stmt) throw new Exception('Error preparando la consulta: '.$conn2->error);
-                    $types=str_repeat('s', count(DB_FIELDS)); // MySQL convierte tipos
+                    $types=str_repeat('s', count(DB_FIELDS));
 
                     $inserted=0; $errors=[];
                     for ($r=$hdrIdx+1; $r<count($rows); $r++){
@@ -372,27 +385,48 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
                         ];
                         foreach ($textCols as $tc){ $rec[$tc] = toTextOrNull($rec[$tc]); }
 
-                        // --- FIX 1: Centro_de_Costos con dígitos y Ident vacío -> mover a Ident ---
+                        // -------- FIXES (mismo set que COL), en este orden --------
+
+                        // (4a) Corrimiento en cadena: Concepto parece centro, Centro es ID, Ident vacío
+                        $identVacio = ($rec['Identificacion_Tercero'] === null || $rec['Identificacion_Tercero'] === '');
+                        if (looksLikeCentro($rec['Concepto_Detalle']) && isDigitsId($rec['Centro_de_Costos']) && $identVacio) {
+                            $tmpCentro = $rec['Concepto_Detalle'];
+                            $rec['Concepto_Detalle'] = null;
+                            $rec['Identificacion_Tercero'] = $rec['Centro_de_Costos'];
+                            $rec['Centro_de_Costos'] = $tmpCentro;
+                        }
+
+                        // (1) Centro es ID e Ident vacío -> Centro→Ident
                         if (isDigitsId($rec['Centro_de_Costos']) &&
                             ($rec['Identificacion_Tercero'] === null || $rec['Identificacion_Tercero'] === '')) {
                             $rec['Identificacion_Tercero'] = $rec['Centro_de_Costos'];
                             $rec['Centro_de_Costos'] = null;
                         }
 
-                        // --- FIX 2: prefijo con dígitos y Numero_Documento vacío -> mover a Numero ---
+                        // (4b) Centro vacío, Ident vacío y Concepto es ID -> Concepto(ID)→Ident
+                        $centroVacio = ($rec['Centro_de_Costos'] === null || $rec['Centro_de_Costos'] === '');
+                        if ($centroVacio &&
+                            ($rec['Identificacion_Tercero'] === null || $rec['Identificacion_Tercero'] === '') &&
+                            isDigitsId($rec['Concepto_Detalle'])) {
+                            $rec['Identificacion_Tercero'] = $rec['Concepto_Detalle'];
+                            $rec['Concepto_Detalle'] = null;
+                        }
+
+                        // (2) prefijo dígitos y Número vacío -> prefijo→Número
                         if (isDigitsGeneric($rec['prefijo']) &&
                             ($rec['Numero_Documento'] === null || $rec['Numero_Documento'] === '')) {
                             $rec['Numero_Documento'] = $rec['prefijo'];
                             $rec['prefijo'] = null;
                         }
 
-                        // --- FIX 3 (nuevo): Clasificacion con dígitos (3–8) y Codigo_Cuenta vacío -> mover a Codigo_Cuenta ---
+                        // (3) Clasificación dígitos (3–8) y Código vacío -> Clasificación→Código
                         if (isDigitsAccountCode($rec['Clasificacion']) &&
                             ($rec['Codigo_Cuenta'] === null || $rec['Codigo_Cuenta'] === '')) {
                             $rec['Codigo_Cuenta'] = $rec['Clasificacion'];
                             $rec['Clasificacion'] = null;
                         }
-                        // -------------------------------------------------------------------------------------------------------
+
+                        // ----------------------------------------------------------
 
                         // bind por referencia (NULL reales)
                         $vars=[]; foreach (DB_FIELDS as $f){ $vars[$f]=$rec[$f]; }
