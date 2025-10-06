@@ -15,12 +15,12 @@ $conn2 = mysqli_connect(
 );
 
 // Database remote tareas
-$conn = mysqli_connect(
-    '44.211.14.38',
-    'lcksgrol8_mrchikip',
-    'Sandia3415',
-    'lcksgrol8_raihana'
-);
+// $conn = mysqli_connect(
+//     '44.211.14.38',
+//     'lcksgrol8_mrchikip',
+//     'Sandia3415',
+//     'lcksgrol8_raihana'
+// );
 
 // Database cks remote puawai
 //$conn2 = mysqli_connect(

@@ -28,7 +28,15 @@ function validateCSRFToken($token)
 // Función para sanitizar datos
 function sanitizeData($data)
 {
-    return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
+    // Corregido: no escapar a HTML al guardar en BD; decodificar entidades HTML del CSV
+    $s = trim($data);
+    // Primer pase
+    $decoded = html_entity_decode($s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    // Segundo pase para casos doblemente escapados (p. ej., &amp;apos;)
+    if ($decoded !== $s) {
+        $decoded = html_entity_decode($decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+    return $decoded;
 }
 
 // Función para convertir fecha
@@ -325,10 +333,10 @@ include("includes/header.php");
 
                         <!-- Mensajes de resultado -->
                         <?php if ($message): ?>
-                            <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-                                <?php echo $message; ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
+                        <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+                            <?php echo $message; ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
                         <?php endif; ?>
 
                         <!-- Formulario de subida -->
@@ -378,58 +386,58 @@ include("includes/header.php");
 </div>
 
 <script>
-    // Proteger la página
-    document.addEventListener('DOMContentLoaded', function() {
-        protectPage();
-    });
+// Proteger la página
+document.addEventListener('DOMContentLoaded', function() {
+    protectPage();
+});
 
-    document.getElementById('uploadForm').addEventListener('submit', function() {
-        const submitBtn = document.getElementById('submitBtn');
-        const progressContainer = document.getElementById('progressContainer');
+document.getElementById('uploadForm').addEventListener('submit', function() {
+    const submitBtn = document.getElementById('submitBtn');
+    const progressContainer = document.getElementById('progressContainer');
 
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando CSV Corregido...';
-        progressContainer.style.display = 'block';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando CSV Corregido...';
+    progressContainer.style.display = 'block';
 
-        // Progreso más rápido para CSV
-        let progress = 0;
-        const interval = setInterval(function() {
-            progress += Math.random() * 20;
-            if (progress > 90) progress = 90;
-            document.getElementById('progressBar').style.width = progress + '%';
-        }, 150);
+    // Progreso más rápido para CSV
+    let progress = 0;
+    const interval = setInterval(function() {
+        progress += Math.random() * 20;
+        if (progress > 90) progress = 90;
+        document.getElementById('progressBar').style.width = progress + '%';
+    }, 150);
 
-        // Limpiar el intervalo cuando el formulario se envíe
-        setTimeout(function() {
-            clearInterval(interval);
-        }, 800);
-    });
+    // Limpiar el intervalo cuando el formulario se envíe
+    setTimeout(function() {
+        clearInterval(interval);
+    }, 800);
+});
 
-    // Validación del archivo en el cliente
-    document.getElementById('csv_file').addEventListener('change', function() {
-        const file = this.files[0];
-        if (file) {
-            if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
-                alert('El archivo es demasiado grande. Máximo 4MB permitido.');
-                this.value = '';
-                return;
-            }
-            if (!file.name.toLowerCase().endsWith('.csv')) {
-                alert('Solo se permiten archivos CSV.');
-                this.value = '';
-                return;
-            }
-
-            console.log('✅ Archivo CSV seleccionado:', file.name);
-            console.log('📊 Tamaño:', (file.size / 1024 / 1024).toFixed(2), 'MB');
-
-            // Mostrar información positiva
-            const formText = document.querySelector('.form-text');
-            formText.innerHTML =
-                '<i class="fas fa-check-circle text-success me-1"></i>Archivo CSV válido - Versión corregida para 60 columnas';
-            formText.className = 'form-text text-success';
+// Validación del archivo en el cliente
+document.getElementById('csv_file').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+        if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
+            alert('El archivo es demasiado grande. Máximo 4MB permitido.');
+            this.value = '';
+            return;
         }
-    });
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            alert('Solo se permiten archivos CSV.');
+            this.value = '';
+            return;
+        }
+
+        console.log('✅ Archivo CSV seleccionado:', file.name);
+        console.log('📊 Tamaño:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+
+        // Mostrar información positiva
+        const formText = document.querySelector('.form-text');
+        formText.innerHTML =
+            '<i class="fas fa-check-circle text-success me-1"></i>Archivo CSV válido - Versión corregida para 60 columnas';
+        formText.className = 'form-text text-success';
+    }
+});
 </script>
 
 <?php
