@@ -5,7 +5,7 @@ include("db.php");
 include("includes/auth.php");
 
 // Configuración de seguridad
-define('MAX_FILE_SIZE', 4 * 1024 * 1024); // 4MB
+define('MAX_FILE_SIZE', 16 * 1024 * 1024); // 16MB
 define('ALLOWED_EXTENSIONS', ['csv']);
 define('UPLOAD_DIR', 'uploads/');
 define('EXPECTED_COLUMNS', 60); // Corregido: el archivo tiene 60 columnas, no 62
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Validar tamaño
             if ($file['size'] > MAX_FILE_SIZE) {
-                $message = 'El archivo es demasiado grande. Máximo 4MB.';
+                $message = 'El archivo es demasiado grande. Máximo 16MB.';
                 $messageType = 'danger';
             } else {
                 // Validar extensión
@@ -270,28 +270,6 @@ include("includes/header.php");
                         </h3>
                     </div>
                     <div class="card-body">
-                        <!-- Alerta sobre correcciones -->
-                        <!-- <div class="alert alert-success">
-                            <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Versión Corregida:</h6>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <ul class="mb-0 small">
-                                        <li>✅ <strong>60 columnas:</strong> Ajustado al formato real del archivo</li>
-                                        <li>✅ <strong>Omite metadata:</strong> Salta las primeras 5 filas</li>
-                                        <li>✅ <strong>Headers en fila 6:</strong> Lee encabezados correctamente</li>
-                                        <li>✅ <strong>Datos desde fila 7:</strong> Procesa información real</li>
-                                    </ul>
-                                </div>
-                                <div class="col-md-6">
-                                    <ul class="mb-0 small">
-                                        <li>✅ <strong>Fechas mejoradas:</strong> Soporta formato con hora</li>
-                                        <li>✅ <strong>Validación robusta:</strong> Verifica estructura</li>
-                                        <li>✅ <strong>Logs detallados:</strong> Para debugging</li>
-                                        <li>✅ <strong>Manejo de errores:</strong> Reporta problemas específicos</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div> -->
 
                         <!-- Instrucciones actualizadas -->
                         <div class="alert alert-info">
@@ -303,33 +281,10 @@ include("includes/header.php");
                                 <li>El archivo debe tener exactamente <strong>60 columnas</strong></li>
                                 <li><strong>Encabezados:</strong> Deben estar en la fila 6</li>
                                 <li><strong>Datos:</strong> Se procesan desde la fila 7 en adelante</li>
-                                <li>Tamaño máximo: 4MB</li>
+                                <li>Tamaño máximo: 16MB</li>
                                 <li>Formatos de fecha soportados: m/d/Y, n/j/Y (con o sin hora)</li>
                             </ul>
                         </div>
-
-                        <!-- Estructura del archivo -->
-                        <!-- <div class="alert alert-warning">
-                            <h6 class="alert-heading"><i class="fas fa-file-alt me-2"></i>Estructura del Archivo CSV:
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <strong>Filas 1-5:</strong><br>
-                                    <span class="text-danger">❌ Metadata (omitidas)</span><br>
-                                    <small>Sales Details, fechas, filtros</small>
-                                </div>
-                                <div class="col-md-4">
-                                    <strong>Fila 6:</strong><br>
-                                    <span class="text-info">📋 Encabezados (60 columnas)</span><br>
-                                    <small>Invoice Number, Prebook Number...</small>
-                                </div>
-                                <div class="col-md-4">
-                                    <strong>Filas 7+:</strong><br>
-                                    <span class="text-success">✅ Datos (procesados)</span><br>
-                                    <small>Registros de ventas reales</small>
-                                </div>
-                            </div>
-                        </div> -->
 
                         <!-- Mensajes de resultado -->
                         <?php if ($message): ?>
@@ -351,7 +306,7 @@ include("includes/header.php");
                                     required>
                                 <div class="form-text">
                                     <i class="fas fa-check-circle text-success me-1"></i>
-                                    Archivo CSV corregido para 60 columnas (máximo 4MB)
+                                    Archivo CSV corregido para 60 columnas (máximo 16MB)
                                 </div>
                             </div>
 
@@ -418,7 +373,7 @@ document.getElementById('csv_file').addEventListener('change', function() {
     const file = this.files[0];
     if (file) {
         if (file.size > <?php echo MAX_FILE_SIZE; ?>) {
-            alert('El archivo es demasiado grande. Máximo 4MB permitido.');
+            alert('El archivo es demasiado grande. Máximo 16MB permitido.');
             this.value = '';
             return;
         }
